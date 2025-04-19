@@ -5,8 +5,8 @@ import { PURPLE_CARDS, BLUE_CARDS, CYAN_CARDS, PINK_CARDS } from '../assets/Card
 import { updatePlayerResources } from './players.js';
 import { getPathColorFromCoords } from './board.js';
 import { PATH_COLORS } from './board-data.js';
-import { logMessage } from './ui.js';
-import { logCardDraw as logCardDrawToSystem, logPlayerAction } from './logging.js';
+import { logMessage } from './logging.js';
+import { ENDOFTURNCARDS } from '../assets/Cards/Endofturncards.js';
 
 // ===== Constants =====
 // These deck types correspond to the path colors defined in board-data.js
@@ -16,10 +16,10 @@ import { logCardDraw as logCardDrawToSystem, logPlayerAction } from './logging.j
 // Cyan: #00FFFF - Age of Reckoning
 // Pink: #FF66FF - Age of Legacy
 export const DECK_TYPES = {
-    PURPLE: 'purple',   // #9C54DE
-    BLUE: 'blue',       // #1B3DE5
-    CYAN: 'cyan',       // #00FFFF
-    PINK: 'pink',       // #FF66FF
+    PURPLE: 'purple',
+    BLUE: 'blue',
+    CYAN: 'cyan',
+    PINK: 'pink',
     END_OF_TURN: 'end_of_turn'
 };
 
@@ -30,12 +30,6 @@ export const pathColors = {
     cyan: PATH_COLORS.cyan,
     pink: PATH_COLORS.pink
 };
-
-// Import the End of Turn cards, using dynamic import to prevent circular dependencies
-let ENDOFTURNCARDS = [];
-
-// Export ENDOFTURNCARDS so it can be imported by other modules
-export { ENDOFTURNCARDS };
 
 // ===== Module state =====
 const cardDecks = {
@@ -61,10 +55,6 @@ const discardPiles = {
  */
 export const setupDecks = async () => {
     try {
-        // Import the End of Turn cards module
-        const endOfTurnModule = await import('../assets/Cards/Endofturncards.js');
-        ENDOFTURNCARDS = endOfTurnModule.default || [];
-        
         // Reset decks
         resetDecks();
         
@@ -96,13 +86,13 @@ const resetDecks = () => {
  * Populate decks with their respective cards
  */
 const populateDecks = () => {
-    // Special event cards
+    // Path decks
     cardDecks[DECK_TYPES.PURPLE] = [...PURPLE_CARDS].map(card => ({ ...card, deckType: DECK_TYPES.PURPLE }));
     cardDecks[DECK_TYPES.BLUE] = [...BLUE_CARDS].map(card => ({ ...card, deckType: DECK_TYPES.BLUE }));
     cardDecks[DECK_TYPES.CYAN] = [...CYAN_CARDS].map(card => ({ ...card, deckType: DECK_TYPES.CYAN }));
     cardDecks[DECK_TYPES.PINK] = [...PINK_CARDS].map(card => ({ ...card, deckType: DECK_TYPES.PINK }));
     
-    // End of turn cards
+    // End of turn deck
     cardDecks[DECK_TYPES.END_OF_TURN] = [...ENDOFTURNCARDS].map(card => ({ ...card, deckType: DECK_TYPES.END_OF_TURN }));
 };
 
@@ -159,34 +149,12 @@ export const getDeckTypeForSpace = (spaceDetails) => {
 };
 
 /**
- * Get special event cards of a specific type
- * @param {string} deckType - The type of deck to retrieve
- * @returns {Array} - Array of card objects
+ * Get cards of a specific deck type
+ * @param {string} deckType - Type of deck to get cards from
+ * @returns {Array} - Array of cards from the specified deck
  */
 export function getSpecialEventCards(deckType) {
-    if (!deckType) return [];
-    
-    switch(deckType.toLowerCase()) {
-        case 'purple':
-        case 'expansion':
-            return cardDecks[DECK_TYPES.PURPLE];
-            
-        case 'blue':
-        case 'resistance':
-            return cardDecks[DECK_TYPES.BLUE];
-            
-        case 'cyan':
-        case 'reckoning':
-            return cardDecks[DECK_TYPES.CYAN];
-            
-        case 'pink':
-        case 'legacy':
-            return cardDecks[DECK_TYPES.PINK];
-            
-        default:
-            console.error(`Unknown special event deck type: ${deckType}`);
-            return [];
-    }
+    return cardDecks[deckType] || [];
 }
 
 /**
@@ -198,77 +166,32 @@ export function getEndOfTurnCards() {
 }
 
 /**
- * Draw a card from a deck
+ * Draw a card from a specific deck
+ * @param {string} deckType - Type of deck to draw from
+ * @returns {Object|null} - The drawn card or null if no cards available
  */
-export function drawCard(deckType, boxNumber = 1) {
-    console.log(`Drawing card from ${deckType} deck, box ${boxNumber}`);
-    
-    let cardPool = [];
-    
-    // Determine which deck to draw from
-    switch(deckType.toLowerCase()) {
-        case 'purple':
-        case 'expansion':
-            // Age of Expansion cards (purple)
-            cardPool = getSpecialEventCards('purple');
-            break;
-            
-        case 'blue':
-        case 'resistance':
-            // Age of Resistance cards (blue)
-            cardPool = getSpecialEventCards('blue');
-            break;
-            
-        case 'cyan':
-        case 'reckoning':
-            // Age of Reckoning cards (cyan)
-            cardPool = getSpecialEventCards('cyan');
-            break;
-            
-        case 'pink':
-        case 'legacy':
-            // Age of Legacy cards (pink)
-            cardPool = getSpecialEventCards('pink');
-            break;
-            
-        case 'end_of_turn':
-            // End of Turn cards
-            cardPool = getEndOfTurnCards();
-            break;
-            
-        default:
-            console.error(`Unknown deck type: ${deckType}`);
-            return null;
-    }
-    
-    // Check if deck is empty
-    if (!cardPool || cardPool.length === 0) {
-        console.error(`No cards available in ${deckType} deck`);
+export function drawCard(deckType) {
+    const deck = cardDecks[deckType];
+    if (!deck || deck.length === 0) {
+        // If deck is empty, shuffle discard pile back into deck
+        if (discardPiles[deckType] && discardPiles[deckType].length > 0) {
+            cardDecks[deckType] = [...discardPiles[deckType]];
+            discardPiles[deckType] = [];
+            shuffleDeck(cardDecks[deckType]);
+            return drawCard(deckType); // Try drawing again
+        }
         return null;
     }
-    
-    // Randomly select a card from the pool
-    const index = Math.floor(Math.random() * cardPool.length);
-    const card = cardPool[index];
-    
-    // Remove from deck and add to discard pile
-    cardPool.splice(index, 1);
-    
-    // Return the card with its deck type
-    return { ...card, deckType };
+    return deck.shift();
 }
 
 /**
- * Log a card draw event to both game log and UI
- * @param {string} playerId - ID of the player drawing the card
- * @param {Object} card - The card drawn
+ * Log a card draw to the game log
+ * @param {string} playerId - ID of the player who drew the card
+ * @param {Object} card - The card that was drawn
  * @param {string} deckType - Type of deck the card was drawn from
  */
 export function logCardDraw(playerId, card, deckType) {
-    // Use the imported log function
-    logCardDrawToSystem(playerId, card, deckType);
-    
-    // Also log to UI message log
     logMessage(`Player ${playerId} drew a ${card.name} card from the ${deckType} deck`, 'card');
 }
 
@@ -308,28 +231,6 @@ export function useSpecialAbility(playerId) {
         })
         .catch(err => {
             console.error('Error using special ability:', err);
-            return false;
-        });
-}
-
-/**
- * Set a player to skip their next turn(s)
- * @param {string} playerId - ID of the player to set
- * @param {number} turns - Number of turns to skip
- * @param {string} source - Source of this effect
- * @returns {Promise<boolean>} - True if successful
- */
-export function setPlayerSkipTurn(playerId, turns = 1, source = 'CARD_EFFECT') {
-    // Import the player function dynamically to avoid circular dependency
-    return import('./players.js')
-        .then(playersModule => {
-            if (typeof playersModule.setPlayerSkipTurn === 'function') {
-                return playersModule.setPlayerSkipTurn(playerId, turns, source);
-            }
-            return false;
-        })
-        .catch(err => {
-            console.error('Error setting player skip turn:', err);
             return false;
         });
 }
@@ -445,7 +346,6 @@ function applyEffect(effect, player) {
     
     // Declare variables outside the switch to avoid lexical declaration errors
     let money, knowledge, influence, direction, spaces;
-    let turns, tradeTurns;
     
     switch(effect.type) {
         case 'RESOURCE_CHANGE':
@@ -505,82 +405,27 @@ function applyEffect(effect, player) {
             
             if (effect.moveToAge) {
                 // Move player to a specific age/path
-                logMessage(`${player.name} moves to the ${effect.moveToAge} path`);
-                
-                // TODO: Implement path changing logic
+                logMessage(`${player.name} moves to ${effect.moveToAge}`);
                 
                 return true;
             }
             
             return false;
             
-        case 'SKIP_TURN':
-            // Set player to skip their next turn
-            player.skipNextTurn = true;
-            logMessage(`${player.name} will skip their next turn`);
-            return true;
-            
-        case 'IMMUNITY':
-            // Grant immunity for a number of turns
-            turns = effect.turns || 1;
-            player.immunity = (player.immunity || 0) + turns;
-            logMessage(`${player.name} is immune from negative effects for ${turns} turn(s)`);
-            return true;
-            
-        case 'TRADE_BLOCKED':
-            // Block player from trading
-            tradeTurns = effect.turns || 1;
-            player.tradeBlocked = (player.tradeBlocked || 0) + tradeTurns;
-            logMessage(`${player.name} cannot trade for ${tradeTurns} turn(s)`);
-            return true;
-            
         default:
-            console.log(`Unhandled effect type: ${effect.type}`);
+            console.error(`Unknown effect type: ${effect.type}`);
             return false;
     }
 }
 
 /**
- * Get the number of cards remaining in a deck
- */
-export const getCardCount = (deckType) => {
-    if (!cardDecks[deckType]) return 0;
-    return cardDecks[deckType].length;
-};
-
-/**
- * Get the number of cards in a discard pile
- */
-export const getDiscardCount = (deckType) => {
-    if (!discardPiles[deckType]) return 0;
-    return discardPiles[deckType].length;
-};
-
-/**
- * Discard a card
+ * Discard a card to its appropriate discard pile
  * @param {Object} card - The card to discard
- * @param {string} deckType - The deck type to discard to
- * @param {string} playerId - ID of the player discarding the card (optional)
  */
-export function discardCard(card, deckType, playerId = null) {
-    if (!card) return;
-    
-    // Use card's deckType if not provided
-    const type = deckType || card.deckType;
-    
-    if (!discardPiles[type]) {
-        console.error(`Invalid deck type for discard: ${type}`);
+export function discardCard(card) {
+    if (!card || !card.deckType) {
+        console.error('Cannot discard card: Invalid card or missing deck type');
         return;
     }
-    
-    discardPiles[type].push(card);
-    console.log(`Discarded card: ${card.name} to ${type} discard pile`);
-    
-    // Log the discard if playerId is provided
-    if (playerId) {
-        logPlayerAction(playerId, 'CARD_DISCARD', {
-            cardName: card.name,
-            deckType: type
-        });
-    }
-} 
+    discardPiles[card.deckType].push(card);
+}

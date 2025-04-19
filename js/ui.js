@@ -1,13 +1,8 @@
-// UI Module for Critocracy
-// Handles all visual elements and user interactions
-
-// Game Logic Imports (Refactored)
-import {
+import {    
     initializeGame, // For starting game from setup UI
     handlePlayerAction, // For Roll, End Turn, Ability buttons
     getGameState, // For checking current state in UI
     resolvePlayerChoice // For handling validated clicks on choices
-    // REMOVED imports: addPlayer, setupRoleSelectionPhase, handleHumanMoveClick, handleHumanCardClick, endPlayerTurn, getCurrentPlayer, advanceToTurnOrderPhase, determineTurnOrder, handlePathChoice
 } from './game.js';
 
 // Player Data Imports
@@ -19,14 +14,12 @@ import {
     scaleCoordinates, // To convert board coords to canvas coords
     unscaleCoordinates, // To convert canvas clicks to board coords
     setupBoard, // To initialize board state (if UI triggers it)
-    findSpaceDetailsByCoords, // To find space details by coordinates
-    getPathColorFromCoords, // To get path color from coordinates
-    resizeCanvas // To resize canvas based on container size
+    findSpaceDetailsByCoords, // To get space details by coordinates
+    getPathColorFromCoords // To get path color by coordinates
 } from './board.js'; 
 
 // Animation Imports
 import { 
-    animateScreenTransition, 
     animateDiceRoll, 
     animateResourceChange,
     showTurnTransition,
@@ -51,8 +44,7 @@ const elements = {
         roleSelectionScreen: document.getElementById('role-selection-screen'),
         turnOrderScreen: document.getElementById('turn-order-screen'),
         gameBoardScreen: document.getElementById('game-board-screen'),
-        endGameScreen: document.getElementById('end-game-screen'),
-        cardView: document.getElementById('card-view')
+        endGameScreen: document.getElementById('end-game-screen')
     },
     playerConfig: { // Group player config elements
         totalPlayerCount: document.getElementById('total-player-count'),
@@ -91,9 +83,6 @@ const elements = {
     endGame: { // Group end game elements
         endGameContainer: document.getElementById('end-game-container'),
         newGameBtn: document.getElementById('new-game-btn')
-    },
-    cardView: { // Group card view elements
-        cardContainer: document.getElementById('card-container')
     }
 };
 
@@ -102,9 +91,9 @@ let currentHighlights = [];
 const PLAYER_TOKEN_RADIUS = 10; 
 
 // ===== Callbacks =====
+// ===== Callbacks =====
 let tradeResponseCallback = null;
 let targetSelectionCallback = null;
-let currentScreen = 'start-screen'; // Keep track of currently visible screen
 
 // --- Initialization ---
 export function initializeUI() {
@@ -131,21 +120,6 @@ export function initializeUI() {
     return true;
 }
 
-// Separate function to set up board-related UI components
-function setupBoardUIComponents() {
-    // This function will be called once the board is initialized
-    // It can use the board-related functions without causing duplicate initialization
-    
-    // Example of using findSpaceDetailsByCoords to get details about a space
-    const startCoords = { x: 8, y: 472 }; // Start box coordinates
-    const spaceDetails = findSpaceDetailsByCoords(startCoords);
-    console.log("Start space details:", spaceDetails);
-    
-    // Example of using getPathColorFromCoords
-    const pathColor = getPathColorFromCoords(168, 579); // Pink path first space
-    console.log("Path color at (168, 579):", pathColor);
-}
-
 // --- Event Handlers Setup ---
 function setupEventListeners() {
     console.log("Setting up UI event listeners...");
@@ -154,22 +128,7 @@ function setupEventListeners() {
     elements.playerConfig.initialStartBtn?.addEventListener('click', () => {
         console.log("Start button clicked - transitioning to player count screen");
         setupPlayerCountUI();
-        
-        // Show player count screen
         showScreen('player-count-screen');
-        
-        // Double-check that the screen is visible
-        setTimeout(() => {
-            const pcScreen = document.getElementById('player-count-screen');
-            if (pcScreen) {
-                console.log(`Player count screen visibility check: display=${pcScreen.style.display}, classes=${pcScreen.classList}`);
-                // Force display if it's still not visible
-                if (pcScreen.style.display === 'none') {
-                    pcScreen.style.display = 'flex';
-                    pcScreen.classList.add('active');
-                }
-            }
-        }, 100);
     });
     
     elements.playerConfig.playerCountConfirm?.addEventListener('click', () => {
@@ -647,83 +606,32 @@ function handleCanvasClick(event) {
     }
 }
 
-// --- Screen Management (Fixed) ---
+// --- Screen Management (Updated) ---
 export function showScreen(screenId) {
-    console.log(`Showing screen: ${screenId}`);
-    
-    // Get target screen element
     const targetScreen = document.getElementById(screenId);
     if (!targetScreen) {
         console.error(`Screen with ID "${screenId}" not found`);
         return;
     }
+
+    // Hide all screens first
+    document.querySelectorAll('.screen').forEach(screen => {
+        // Remove visible class
+        screen.classList.remove('visible');
+        // Add hidden class
+        screen.classList.add('hidden');
+        // Also set display none for screens using that method
+        screen.style.display = 'none';
+    });
     
-    // Track previous screen for transition
-    const previousScreen = currentScreen;
+    // Show the target screen
+    targetScreen.classList.remove('hidden');
+    targetScreen.classList.add('visible');
+    targetScreen.style.display = '';
     
-    try {
-        // Use animated screen transition
-        if (previousScreen) {
-            animateScreenTransition(previousScreen, screenId);
-        } else {
-            // If no previous screen, just show this one directly
-            // Hide all screens first
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.style.display = 'none';
-                screen.classList.remove('active');
-            });
-            
-            // Show target screen
-            targetScreen.style.display = 'flex';
-            targetScreen.classList.add('active');
-        }
-    } catch (error) {
-        // Fallback if animation function fails
-        console.error("Screen transition animation failed:", error);
-        
-        // Hide all screens first
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.style.display = 'none';
-            screen.classList.remove('active');
-        });
-        
-        // Show target screen
-        targetScreen.style.display = 'flex';
-        targetScreen.classList.add('active');
-    }
-    
-    // Update current screen tracking
-    currentScreen = screenId;
-    
-    // Special handling for game board screen
+    // If this is the game screen, update game components
     if (screenId === 'game-board-screen') {
-        // Small delay to ensure screen is visible before drawing
-        setTimeout(() => {
-            console.log("Drawing game board and players");
-            drawBoard();
-            drawPlayers();
-            updatePlayerInfo();
-            updateGameControls();
-            
-            // Show appropriate controls
-            const gameControls = document.getElementById('controls');
-            if (gameControls) gameControls.style.display = 'flex';
-            
-            const rollDiceBtn = document.getElementById('roll-dice-btn');
-            const endTurnBtn = document.getElementById('end-turn-btn');
-            if (rollDiceBtn) rollDiceBtn.style.display = 'block';
-            if (endTurnBtn) endTurnBtn.style.display = 'block';
-        }, 50);
-    } else {
-        // Hide game controls on non-game screens
-        const gameControls = document.getElementById('controls');
-        if (gameControls) gameControls.style.display = 'none';
-    }
-    
-    // Ensure start button is visible on start screen
-    if (screenId === 'start-screen') {
-        const startButton = document.getElementById('start-game-btn');
-        if (startButton) startButton.style.display = 'block';
+        updateGameComponents();
     }
 }
 
@@ -3057,5 +2965,237 @@ export function drawAllPlayerTokens() {
             drawPlayerToken(player, player.currentCoords);
         }
     });
+}
+
+// Add resizeCanvas function
+function resizeCanvas() {
+    const canvas = elements.gameBoard.boardCanvas;
+    if (!canvas) return;
+    
+    const container = canvas.parentElement;
+    if (!container) return;
+    
+    // Set canvas size to match container while maintaining aspect ratio
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    const aspectRatio = 1536 / 1024; // Original board dimensions
+    
+    let width, height;
+    if (containerWidth / containerHeight > aspectRatio) {
+        height = containerHeight;
+        width = height * aspectRatio;
+    } else {
+        width = containerWidth;
+        height = width / aspectRatio;
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Update board scale
+    if (window.boardState) {
+        window.boardState.scale = width / 1536;
+    }
+    
+    // Redraw board
+    drawBoard();
+    drawPlayers();
+}
+
+// Add setupBoardUIComponents function
+function setupBoardUIComponents() {
+    // This function will be called once the board is initialized
+    // It can use the board-related functions without causing duplicate initialization
+    
+    // Example of using findSpaceDetailsByCoords to get details about a space
+    const startCoords = { x: 8, y: 472 }; // Start box coordinates
+    const spaceDetails = findSpaceDetailsByCoords(startCoords);
+    console.log("Start space details:", spaceDetails);
+    
+    // Example of using getPathColorFromCoords
+    const pathColor = getPathColorFromCoords(168, 579); // Pink path first space
+    console.log("Path color at (168, 579):", pathColor);
+}
+
+// Rename showActionCard to showColoredDeckCard
+export function showColoredDeckCard(cardData) {
+    console.log("showColoredDeckCard called with:", cardData);
+    
+    // First, ensure the colored deck card container exists
+    let coloredDeckContainer = document.getElementById('colored-deck-container');
+    let coloredCard, title, message, buttonContainer;
+    
+    // Create container if it doesn't exist
+    if (!coloredDeckContainer) {
+        console.log("Creating colored deck container dynamically");
+        
+        coloredDeckContainer = document.createElement('div');
+        coloredDeckContainer.id = 'colored-deck-container';
+        coloredDeckContainer.className = 'popup';
+        coloredDeckContainer.style.position = 'fixed';
+        coloredDeckContainer.style.top = '0';
+        coloredDeckContainer.style.left = '0';
+        coloredDeckContainer.style.width = '100%';
+        coloredDeckContainer.style.height = '100%';
+        coloredDeckContainer.style.display = 'none';
+        coloredDeckContainer.style.justifyContent = 'center';
+        coloredDeckContainer.style.alignItems = 'center';
+        coloredDeckContainer.style.zIndex = '1000';
+        coloredDeckContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        
+        const cardHTML = `
+            <div id="colored-deck-card" class="colored-deck-card" style="background-color: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; width: 80%; max-width: 500px;">
+                <h3 id="colored-deck-title" style="margin: 0;">Deck Card</h3>
+                <div id="colored-deck-message" class="card-message-container" style="margin-bottom: 20px; line-height: 1.5;"></div>
+                <div id="colored-deck-buttons" class="card-buttons" style="display: flex; justify-content: center; gap: 10px;"></div>
+            </div>
+        `;
+        
+        coloredDeckContainer.innerHTML = cardHTML;
+        document.body.appendChild(coloredDeckContainer);
+    }
+    
+    // Get card elements
+    coloredCard = document.getElementById('colored-deck-card');
+    title = document.getElementById('colored-deck-title');
+    message = document.getElementById('colored-deck-message');
+    buttonContainer = document.getElementById('colored-deck-buttons');
+    
+    // Create elements if they don't exist
+    if (!coloredCard || !title || !message || !buttonContainer) {
+        console.error("Colored deck card elements not found or could not be created:", {
+            coloredCard: !!coloredCard,
+            title: !!title,
+            message: !!message,
+            buttonContainer: !!buttonContainer
+        });
+        return;
+    }
+    
+    // Set up card content
+    coloredCard.className = 'colored-deck-card';
+    if (cardData.type) {
+        coloredCard.classList.add(`card-type-${cardData.type.toLowerCase()}`);
+    }
+    
+    title.textContent = cardData.title || 'Deck Card';
+    message.innerHTML = cardData.message || '';
+    buttonContainer.innerHTML = '';
+    
+    // Add buttons if provided
+    if (cardData.buttons && Array.isArray(cardData.buttons)) {
+        cardData.buttons.forEach(button => {
+            const btn = document.createElement('button');
+            btn.textContent = button.text;
+            btn.className = 'colored-deck-button';
+            btn.onclick = () => {
+                if (typeof button.action === 'function') {
+                    button.action();
+                }
+                // Hide card
+                hideColoredDeckCard();
+            };
+            buttonContainer.appendChild(btn);
+        });
+    } else {
+        // Add default OK button
+        const okButton = document.createElement('button');
+        okButton.textContent = 'OK';
+        okButton.className = 'colored-deck-button';
+        okButton.addEventListener('click', hideColoredDeckCard);
+        buttonContainer.appendChild(okButton);
+    }
+    
+    // Log the card display
+    console.log('Displaying colored deck card:', {
+        cardTitle: cardData.title || 'Deck Card',
+        message: cardData.message,
+        buttons: cardData.buttons
+    });
+    
+    // Add styles if not already present
+    if (!document.getElementById('colored-deck-styles')) {
+        addColoredDeckStyles();
+    }
+    
+    // Show the card container
+    coloredDeckContainer.style.display = 'flex';
+    
+    // Show the card with animation
+    coloredCard.style.display = 'flex';
+    
+    // Force reflow
+    void coloredCard.offsetWidth;
+    
+    // Add shown class for animation
+    coloredCard.classList.add('shown');
+    
+    console.log("Colored deck card successfully displayed");
+}
+
+/**
+ * Hide the colored deck card with an exit animation
+ */
+export function hideColoredDeckCard() {
+    const coloredDeckContainer = document.getElementById('colored-deck-container');
+    if (!coloredDeckContainer) return;
+    
+    const coloredCard = document.getElementById('colored-deck-card');
+    if (!coloredCard) return;
+    
+    // Add exit animation class
+    coloredCard.classList.remove('shown');
+    coloredCard.classList.add('card-exit');
+    
+    // Hide container after animation
+    setTimeout(() => {
+        coloredDeckContainer.style.display = 'none';
+        
+        // Clean up animation classes
+        coloredCard.classList.remove('card-exit');
+        
+        // Clear content
+        const messageEl = document.getElementById('colored-deck-message');
+        const buttonsEl = document.getElementById('colored-deck-buttons');
+        if (messageEl) messageEl.innerHTML = '';
+        if (buttonsEl) buttonsEl.innerHTML = '';
+    }, 300);
+}
+
+// Update CSS class names
+function addColoredDeckStyles() {
+    const styles = document.createElement('style');
+    styles.id = 'colored-deck-styles';
+    styles.textContent = `
+        #colored-deck-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .colored-deck-card {
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s ease-out;
+        }
+        
+        .colored-deck-card.shown {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .colored-deck-card.card-exit {
+            opacity: 0;
+            transform: scale(0.8);
+        }
+    `;
+    document.head.appendChild(styles);
 }
 

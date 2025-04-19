@@ -326,23 +326,23 @@ const setupBoardClickListener = (canvas) => {
             }
         }
         
-        // Check for clicks on special event card deck areas (path cards)
-        const specialEventCardAreas = [
-            { name: 'purple', x: 116, y: 443, width: 70, height: 100 }, // Purple path cards
-            { name: 'blue', x: 836, y: 178, width: 70, height: 100 },   // Blue path cards
-            { name: 'cyan', x: 836, y: 720, width: 70, height: 100 },   // Cyan path cards
-            { name: 'pink', x: 1398, y: 453, width: 70, height: 100 }   // Pink path cards
+        // Check for clicks on deck areas (path decks)
+        const deckAreas = [
+            { name: 'purple', x: 116, y: 443, width: 70, height: 100 }, // Purple deck
+            { name: 'blue', x: 836, y: 178, width: 70, height: 100 },   // Blue deck
+            { name: 'cyan', x: 836, y: 720, width: 70, height: 100 },   // Cyan deck
+            { name: 'pink', x: 1398, y: 453, width: 70, height: 100 }   // Pink deck
         ];
         
-        // Check if the click is on a special event card deck
-        for (const area of specialEventCardAreas) {
+        // Check if the click is on a deck
+        for (const area of deckAreas) {
             if (x >= area.x && x <= area.x + area.width && 
                 y >= area.y && y <= area.y + area.height) {
-                console.log(`Clicked on ${area.name} Special Event Card Deck`);
+                console.log(`Clicked on ${area.name} Deck`);
                 if (window.gameHandlers && typeof window.gameHandlers.handleSpecialEventCardDraw === 'function') {
                     window.gameHandlers.handleSpecialEventCardDraw(area.name);
-                    return;
                 }
+                return;
             }
         }
         
@@ -819,15 +819,14 @@ function highlightChoicePoints() {
         if (currentPlayer && currentPlayer.currentSpace && currentPlayer.currentSpace.pathColor) {
             const pathColor = currentPlayer.currentSpace.pathColor;
             
-            // Highlight the appropriate special event card deck based on path color
-            const specialEventCardAreas = {
-                'purple': { x: 116, y: 443, width: 70, height: 100 },
-                'blue': { x: 836, y: 178, width: 70, height: 100 },
-                'cyan': { x: 836, y: 720, width: 70, height: 100 },
-                'pink': { x: 1398, y: 453, width: 70, height: 100 }
+            // Highlight the appropriate deck based on path color
+            const deckAreas = {
+                purple: { x: 116, y: 443, width: 70, height: 100 },
+                blue: { x: 836, y: 178, width: 70, height: 100 },
+                cyan: { x: 836, y: 720, width: 70, height: 100 },
+                pink: { x: 1398, y: 453, width: 70, height: 100 }
             };
-            
-            const deckArea = specialEventCardAreas[pathColor];
+            const deckArea = deckAreas[pathColor];
             if (deckArea) {
                 const [x1, y1] = scaleCoordinates(deckArea.x, deckArea.y);
                 const [x2, y2] = scaleCoordinates(deckArea.x + deckArea.width, deckArea.y + deckArea.height);
@@ -911,11 +910,13 @@ export const drawBoard = () => {
             highlightEndOfTurnCardBoxes(ctx);
         }
         
-        // Check if we need to highlight a special event card deck (for draw spaces)
-        if (window.gameState && window.gameState.turnState === 'AWAITING_SPECIAL_EVENT_CARD' && 
-            window.gameState.currentPlayer && window.gameState.currentPlayer.currentPathColor) {
-            const pathColor = window.gameState.currentPlayer.currentPathColor;
-            highlightSpecialEventCardDeck(ctx, pathColor);
+        // Check if we need to highlight a deck (for draw spaces)
+        if (window.gameState && window.gameState.turnState === 'AWAITING_SPECIAL_EVENT_CARD' &&
+            window.gameState.currentPlayer) {
+            const pathColor = getPathColorFromCoords(window.gameState.currentPlayer.position.x, window.gameState.currentPlayer.position.y);
+            if (pathColor) {
+                highlightDeck(ctx, pathColor);
+            }
         }
     } catch (e) {
         console.error("Error checking game state for card box highlights:", e);
@@ -1423,22 +1424,18 @@ export function highlightEndOfTurnCardBoxes(ctx) {
 }
 
 /**
- * Highlights the appropriate Special Event Card deck based on path color
- * @param {CanvasRenderingContext2D} ctx - The canvas context to draw on
- * @param {string} pathColor - The color of the path ('purple', 'blue', 'cyan', 'pink')
+ * Highlights the appropriate deck based on path color
+ * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
+ * @param {string} pathColor - The color of the path
  */
-function highlightSpecialEventCardDeck(ctx, pathColor) {
-    if (!ctx || !boardState.scale || !pathColor) return;
-    
-    // Coordinate definitions for each deck
-    const specialEventCardAreas = {
-        'purple': { x: 116, y: 443, width: 70, height: 100 },
-        'blue': { x: 836, y: 178, width: 70, height: 100 },
-        'cyan': { x: 836, y: 720, width: 70, height: 100 },
-        'pink': { x: 1398, y: 453, width: 70, height: 100 }
+function highlightDeck(ctx, pathColor) {
+    const deckAreas = {
+        purple: { x: 116, y: 443, width: 70, height: 100 },
+        blue: { x: 836, y: 178, width: 70, height: 100 },
+        cyan: { x: 836, y: 720, width: 70, height: 100 },
+        pink: { x: 1398, y: 453, width: 70, height: 100 }
     };
-    
-    const deckArea = specialEventCardAreas[pathColor];
+    const deckArea = deckAreas[pathColor];
     if (!deckArea) return;
     
     const [x1, y1] = scaleCoordinates(deckArea.x, deckArea.y);

@@ -6,52 +6,37 @@ import {
     drawBoard, 
     startMoveAnimation,
     setupBoard,
-    animateTokenToPosition,
     findSpaceDetailsByCoords,
     getNextStepOptions,
-    getPathColorFromCoords,
-    showMovementPathPreview,
-    clearMovementPreview,
     highlightPlayerChoices,
     highlightEndOfTurnCardBoxes
 } from './board.js';
 import { 
-    START_SPACE, FINISH_SPACE, 
-    AgeOfExpansion, AgeOfResistance, AgeOfReckoning, AgeOfLegacy,
-    PATH_COLORS
+    START_SPACE
 } from './board-data.js';
 import { 
     setupDecks, 
     drawCard, 
     applyCardEffects,
-    ENDOFTURNCARDS,
     applyEndOfTurnCardEffects,
-    doesDeckExist,
-    discardCard,
     DECK_TYPES,
     logCardDraw,
 } from './cards.js';
 import { 
     createPlayer, 
     updatePlayerResources, 
-    allPlayersFinished,
     markPlayerFinished, 
     getPlayerRanking,
     getPlayers, 
     PLAYER_ROLES, 
     resetPlayers,
-    hasTemporaryImmunity,
     grantTemporaryImmunity,
-    blockTrade,
-    isTradeBlocked,
-    setPlayerForcedPathChange,
-    decrementTradeBlockTurns
+    decrementTradeBlockTurns,
+    getPlayerById
 } from './players.js';
 
 // Direct UI imports are necessary for prompts and direct feedback
 import { 
-    showCard, 
-    hideCard, 
     showEndGameScreen, 
     updatePlayerInfo, 
     updateGameControls,
@@ -64,11 +49,9 @@ import {
     highlightChoices,
     clearHighlights,
     showCardPopup,
-    showActionCard,
     updateGameComponents,
     animatePlayerMovement,
-    highlightDeck,
-    drawAllPlayerTokens
+    highlightDeck
 } from './ui.js';
 
 // Import logging system
@@ -76,19 +59,9 @@ import {
     initLogging,
     logGameEvent,
     logPlayerAction,
-    logPlayerMovement,
     logTurnStart,
-    logTurnEnd,
-    getFormattedGameLog
+    logTurnEnd
 } from './logging.js';
-
-// ===== Adjust imports to match special event cards ===== 
-import {
-    PURPLE_CARDS as PURPLE_EVENT_CARDS,
-    BLUE_CARDS as BLUE_EVENT_CARDS,
-    CYAN_CARDS as CYAN_EVENT_CARDS,
-    PINK_CARDS as PINK_EVENT_CARDS
-} from '../assets/Cards/Specialeventcards.js';
 
 // Create a global game handlers object for board interactions
 // Add this after initializing gameState
@@ -101,38 +74,6 @@ export const gameHandlers = {
 
 // Make the handlers available on the window object
 window.gameHandlers = gameHandlers;
-
-// --- Helper Functions ---
-
-// Sleep function to introduce delays
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Note: The drawEndOfTurnCard function is now exported and moved below to avoid duplicate declarations
-
-// --- Constants ---
-const CPU_NAMES_BASED_ON_HUMAN_ROLE = {
-    'Entrepreneur': { 'Artist': 'Salvador Dali', 'Politician': 'Winston Churchill', 'Historian': 'Suetonius', 'Revolutionary': 'Audre Lorde', 'Capitalist': 'JP Morgan' },
-    'Artist': { 'Entrepreneur': 'Regina Basilier', 'Politician': 'Winston Churchill', 'Historian': 'Suetonius', 'Revolutionary': 'Audre Lorde', 'Capitalist': 'JP Morgan' },
-    'Politician': { 'Entrepreneur': 'Regina Basilier', 'Artist': 'Salvador Dali', 'Historian': 'Suetonius', 'Revolutionary': 'Audre Lorde', 'Capitalist': 'JP Morgan' },
-    'Historian': { 'Entrepreneur': 'Regina Basilier', 'Artist': 'Salvador Dali', 'Politician': 'Winston Churchill', 'Revolutionary': 'Audre Lorde', 'Capitalist': 'JP Morgan' },
-    'Revolutionary': { 'Entrepreneur': 'Regina Basilier', 'Artist': 'Salvador Dali', 'Politician': 'Winston Churchill', 'Historian': 'Suetonius', 'Capitalist': 'JP Morgan' },
-    'Capitalist': { 'Entrepreneur': 'Regina Basilier', 'Artist': 'Salvador Dali', 'Politician': 'Winston Churchill', 'Historian': 'Suetonius', 'Revolutionary': 'Audre Lorde' }
-};
-
-// Mapping for Draw space logic (reverse lookup)
-// These path colors MUST match the exact hex values from PATH_COLORS in board-data.js:
-// Purple (#9C54DE): Age of Expansion
-// Blue (#1B3DE5): Age of Resistance
-// Cyan (#00FFFF): Age of Reckoning
-// Pink (#FF66FF): Age of Legacy
-const AgePaths = {
-    purple: 'AGE_OF_EXPANSION',   // #9C54DE
-    blue: 'AGE_OF_RESISTANCE',    // #1B3DE5
-    cyan: 'AGE_OF_RECKONING',     // #00FFFF
-    pink: 'AGE_OF_LEGACY'         // #FF66FF
-};
 
 // ===== Game State =====
 let gameState = {
@@ -168,32 +109,32 @@ export function getGameState() {
  * @param {number} steps - Number of steps to move
  * @returns {Promise<boolean>} - True if move was processed successfully
  */
-async function processPlayerMove(player, target = null, steps) {
-    if (!player || steps < 1) {
-        console.error('Cannot move player: Invalid player or steps');
-        return false;
-    }
-
-    let possibleMoves = getPossibleMoves(player, steps);
-
-    if (possibleMoves.length === 1) {
-        // Automatically choose the only possible position
-        const targetPosition = possibleMoves[0];
-        // Use direct animation instead of recursion
-        await animatePlayerMovement(player, player.currentCoords, targetPosition);
-        player.currentCoords = targetPosition;
-        handleEndOfMove(player.id, { spaceDetails: findSpaceDetailsByCoords(targetPosition) });
-    } else if (possibleMoves.length > 1) {
-        // Present choices to the player
-        presentJunctionChoices(player.id, possibleMoves);
-    } else {
-        // No valid moves - end the turn
-        logMessage(`${player.name} has no valid moves`, 'error');
-        gameState.turnState = 'ACTION_COMPLETE';
-    }
-    
-    return true;
-}
+// async function processPlayerMove(player, target = null, steps) {
+//     if (!player || steps < 1) {
+//         console.error('Cannot move player: Invalid player or steps');
+//         return false;
+//     }
+//
+//     let possibleMoves = getPossibleMoves(player, steps);
+//
+//     if (possibleMoves.length === 1) {
+//         // Automatically choose the only possible position
+//         const targetPosition = possibleMoves[0];
+//         // Use direct animation instead of recursion
+//         await animatePlayerMovement(player, player.currentCoords, targetPosition);
+//         player.currentCoords = targetPosition;
+//         handleEndOfMove(player.id, { spaceDetails: findSpaceDetailsByCoords(targetPosition) });
+//     } else if (possibleMoves.length > 1) {
+//         // Present choices to the player
+//         presentJunctionChoices(player.id, possibleMoves);
+//     } else {
+//         // No valid moves - end the turn
+//         logMessage(`${player.name} has no valid moves`, 'error');
+//         gameState.turnState = 'ACTION_COMPLETE';
+//     }
+//     
+//     return true;
+// }
 
 export async function initializeGame(playerConfigs) {
     console.log("Initializing game...");
@@ -294,10 +235,6 @@ export async function initializeGame(playerConfigs) {
                   const cpuRole = availableRoles.pop();
                   
                   let cpuName = `CPU (${cpuRole.substring(0,3)})`;
-                  if (humanRole && CPU_NAMES_BASED_ON_HUMAN_ROLE[humanRole]?.[cpuRole]) {
-                       cpuName = CPU_NAMES_BASED_ON_HUMAN_ROLE[humanRole][cpuRole];
-                  }
-                  
                   const cpuPlayer = createPlayer(cpuName, cpuRole, false);
                   if (cpuPlayer) {
                        addedPlayerIds.push(cpuPlayer.id);
@@ -438,6 +375,13 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
     
     console.log(`Handling action ${actionType} for ${player.name} with params:`, actionParams);
     
+    // Declare variables outside switch to avoid lexical declarations
+    let deckColor;
+    let pathCard;
+    let boxNumber;
+    let eotCard;
+    let success;
+    
     switch (actionType) {
         case 'ROLL_DICE':
             // Handle rolling the dice and movement
@@ -450,14 +394,14 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
                 return false;
             }
             
-            const deckColor = actionParams.deckColor || player.currentPath;
+            deckColor = actionParams.deckColor || player.currentPath;
             if (!deckColor) {
                 console.error(`Cannot draw path card: No deck color specified`);
                 return false;
             }
             
             // Draw a card from the appropriate deck
-            const pathCard = drawCard(deckColor);
+            pathCard = drawCard(deckColor);
             if (!pathCard) {
                 console.error(`Failed to draw card from ${deckColor} deck`);
                 return false;
@@ -492,10 +436,10 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
             }
             
             // For human players, they can select which end of turn box to draw from
-            const boxNumber = player.isHuman ? (actionParams.cardBoxNumber || 1) : Math.floor(Math.random() * 2) + 1;
+            boxNumber = player.isHuman ? (actionParams.cardBoxNumber || 1) : Math.floor(Math.random() * 2) + 1;
             
             // Draw card from end of turn deck
-            const eotCard = drawCard('end_of_turn', boxNumber);
+            eotCard = drawCard('end_of_turn', boxNumber);
             if (!eotCard) {
                 console.error(`Failed to draw end of turn card from box ${boxNumber}`);
                 return false;
@@ -554,7 +498,7 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
             }
             
             // Handle role-specific abilities
-            const success = usePlayerAbility(player);
+            success = usePlayerAbility(player);
             
             if (success) {
                 // Mark ability as used
@@ -680,7 +624,7 @@ export function resolvePlayerChoice(playerId, choice) {
             } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
                 // If this was a junction choice, update path if changed
                 if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                    logMessage(`${player.name} changed path to ${choice.pathColor}`);
+                    logMessage(`${player.name} changed path to ${getAgeNameFromPathColor(choice.pathColor)}`);
                     player.currentPath = choice.pathColor;
                 }
                 
@@ -729,7 +673,7 @@ export function resolvePlayerChoice(playerId, choice) {
             gameState.turnState = 'ACTION_COMPLETE';
         } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
             if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                logMessage(`${player.name} changed path to ${choice.pathColor}`);
+                logMessage(`${player.name} changed path to ${getAgeNameFromPathColor(choice.pathColor)}`);
                 player.currentPath = choice.pathColor;
             }
             
@@ -819,7 +763,7 @@ function handleEndOfMove(playerId, moveResult) {
         if (spaceType === 'draw') {
             const pathColor = moveResult.spaceDetails.pathColor;
             if (pathColor) {
-                logMessage(`${player.name} landed on a draw space. Draw a ${pathColor} Special Event card.`);
+                logMessage(`${player.name} landed on a draw space. Draw a card from the ${getAgeNameFromPathColor(pathColor)} deck.`);
                 player.currentPathColor = pathColor;
                 gameState.turnState = 'AWAITING_SPECIAL_EVENT_CARD';
                 
@@ -1050,19 +994,29 @@ async function handleAITurn(aiPlayer) {
     
     // Add a consistent human-like delay before AI actions (800-1200ms)
     const baseDelay = 800 + Math.floor(Math.random() * 400);
-    await sleep(baseDelay);
+    await new Promise(resolve => setTimeout(resolve, baseDelay));
+
+    // Declare variables outside switch to avoid lexical declarations
+    let availableChoices;
+    let choiceIndex;
+    let startChoice;
+    let junctionOptions;
+    let junctionIndex;
+    let junctionChoice;
+    let cardBoxNumber;
+    let endOfTurnCard;
 
     try {
         switch (currentState) {
             case 'AWAITING_START_CHOICE':
                  // AI chooses path with slight randomness to avoid predictability
-                 const availableChoices = [...gameState.currentChoices];
+                 availableChoices = [...gameState.currentChoices];
                  // Pick a random option from the available choices (instead of always first)
-                 const choiceIndex = Math.floor(Math.random() * availableChoices.length);
-                 const startChoice = availableChoices[choiceIndex];
+                 choiceIndex = Math.floor(Math.random() * availableChoices.length);
+                 startChoice = availableChoices[choiceIndex];
                  
                  logMessage(`${aiPlayer.name} is choosing a starting path...`);
-                 await sleep(1000); // Pause to create anticipation
+                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause to create anticipation
                  
                  console.log(`AI ${aiPlayer.name} chooses path: ${startChoice.pathColor}`);
                  resolvePlayerChoice(aiPlayer.id, startChoice);
@@ -1070,18 +1024,18 @@ async function handleAITurn(aiPlayer) {
                  
             case 'AWAITING_ROLL':
                  logMessage(`${aiPlayer.name} is rolling the dice...`);
-                 await sleep(800); // Pause before rolling
+                 await new Promise(resolve => setTimeout(resolve, 800)); // Pause before rolling
                  handlePlayerAction(aiPlayer.id, 'ROLL_DICE');
                  break;
                  
             case 'AWAITING_JUNCTION_CHOICE':
                  // Similar to start choice, add randomness to AI junction choice
-                 const junctionOptions = [...gameState.currentChoices];
-                 const junctionIndex = Math.floor(Math.random() * junctionOptions.length);
-                 const junctionChoice = junctionOptions[junctionIndex];
+                 junctionOptions = [...gameState.currentChoices];
+                 junctionIndex = Math.floor(Math.random() * junctionOptions.length);
+                 junctionChoice = junctionOptions[junctionIndex];
                  
                  logMessage(`${aiPlayer.name} is choosing a path at the junction...`);
-                 await sleep(1200); // Longer pause for "thinking" at junction
+                 await new Promise(resolve => setTimeout(resolve, 1200)); // Longer pause for "thinking" at junction
                  
                  console.log(`AI ${aiPlayer.name} chooses junction path to:`, junctionChoice.coordinates);
                  resolvePlayerChoice(aiPlayer.id, junctionChoice);
@@ -1089,19 +1043,19 @@ async function handleAITurn(aiPlayer) {
                  
             case 'AWAITING_END_OF_TURN_CARD':
                  logMessage(`${aiPlayer.name} is drawing an End of Turn card...`);
-                 await sleep(1000); // Pause before drawing
+                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause before drawing
                  
                  // AI draws from a random end of turn card box (1 or 2)
-                 const cardBoxNumber = Math.random() < 0.5 ? 1 : 2;
+                 cardBoxNumber = Math.random() < 0.5 ? 1 : 2;
                  console.log(`AI ${aiPlayer.name} drawing End of Turn card from box ${cardBoxNumber}.`);
                  
                  // Draw card and show it
-                 const endOfTurnCard = drawCard(DECK_TYPES.END_OF_TURN);
+                 endOfTurnCard = drawCard(DECK_TYPES.END_OF_TURN);
                  if (endOfTurnCard) {
                      await handleCardDisplay(endOfTurnCard, DECK_TYPES.END_OF_TURN, aiPlayer);
                      
                      // Pause to show the card (simulating reading time)
-                     await sleep(2500);
+                     await new Promise(resolve => setTimeout(resolve, 2500));
                      
                      // Apply card effects
                      applyEndOfTurnCardEffects(endOfTurnCard, aiPlayer);
@@ -1119,19 +1073,19 @@ async function handleAITurn(aiPlayer) {
                  updateGameControls();
                  
                  // End turn after a pause
-                 await sleep(1200);
+                 await new Promise(resolve => setTimeout(resolve, 1200));
                  handlePlayerAction(aiPlayer.id, 'END_TURN');
                  break;
                  
             case 'ACTION_COMPLETE':
                  logMessage(`${aiPlayer.name} is ending their turn...`);
-                 await sleep(1000); // Pause before ending turn
+                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause before ending turn
                  handlePlayerAction(aiPlayer.id, 'END_TURN');
                  break;
                  
             default:
                  console.log(`AI ${aiPlayer.name} in unhandled state: ${currentState}. Ending turn as fallback.`);
-                 await sleep(1000);
+                 await new Promise(resolve => setTimeout(resolve, 1000));
                  handlePlayerAction(aiPlayer.id, 'END_TURN');
                  break;
         }
@@ -1139,7 +1093,7 @@ async function handleAITurn(aiPlayer) {
          console.error(`Error during AI turn (${aiPlayer.name}, State: ${currentState}):`, error);
          logMessage(`AI error for ${aiPlayer.name}: ${error.message}`);
          gameState.turnState = 'TURN_ENDED';
-         await sleep(500);
+         await new Promise(resolve => setTimeout(resolve, 500));
          advanceToNextPlayer();
     }
 }
@@ -1272,34 +1226,30 @@ export function initiateAlliance(playerA, playerB) {
 }
 
 /**
- * Handler for Special Event card draws
- * @param {Object} player - Player drawing the card
- * @param {string} pathColor - Color/type of the special event deck to draw from
+ * Handler for deck draws
+ * @param {Player} player - The player drawing the card
+ * @param {string} pathColor - The color of the path/deck to draw from
  */
 export async function handleSpecialEventCardDraw(player, pathColor) {
-    // Draw a card from the special event deck
-    const drawnCard = drawCard(pathColor);
-    
-    if (!drawnCard) {
-        logMessage(`No cards available in the ${pathColor} deck.`);
+    if (!player || !pathColor) {
+        console.error('Invalid parameters for handleSpecialEventCardDraw');
         return;
     }
-    
-    // Show the card
-    await handleCardDisplay(drawnCard, pathColor, player);
-    
-    // Apply card effects
-    applyCardEffects(drawnCard, player);
-    
-    // Log the card draw
+
+    // Draw card from the appropriate deck
+    const card = drawCard(pathColor);
+    if (!card) {
+        console.error(`Failed to draw card from ${pathColor} deck`);
+        return;
+    }
+
     logGameEvent('CARD_DRAWN', {
         playerId: player.id,
-        deckType: pathColor,
-        cardName: drawnCard.name,
-        cardEffect: drawnCard.effect
+        cardName: card.name,
+        deckType: pathColor
     });
 
-    // Mark that special event card has been drawn and update game state
+    // Mark that card has been drawn and update game state
     player.drewSpecialEventCard = true;
     gameState.turnState = 'AWAITING_END_OF_TURN_CARD';
     
@@ -1692,4 +1642,15 @@ async function handleCardDisplay(card, deckType, player) {
             resolve();
         });
     });
+}
+
+// Helper function to convert path colors to Age names for display
+function getAgeNameFromPathColor(pathColor) {
+    const ageMap = {
+        'purple': 'Age of Expansion',
+        'blue': 'Age of Resistance',
+        'cyan': 'Age of Reckoning',
+        'pink': 'Age of Legacy'
+    };
+    return ageMap[pathColor.toLowerCase()] || pathColor;
 }

@@ -274,7 +274,9 @@ export const getPlayerRanking = () => {
 };
 
 /**
- * Get player by role
+ * Gets a player by their role.
+ * @param {string} role - The role to search for.
+ * @returns {Object|null} The player with the specified role, or null if not found.
  */
 export const getPlayerByRole = (role) => {
     return players.find(player => player.role === role);
@@ -347,49 +349,50 @@ export const useSpecialAbility = (playerId) => {
             logMessage(`${player.name} used special ability: Gained 5 Knowledge!`);
             return true;
             
-        case 'sabotageImmunity': // REVOLUTIONARY
-            {
-                // Already passive for one sabotage, can be used to sabotage another player
-                // Display a target selection UI for the player
-                const possibleTargets = getPlayers().filter(p => p.id !== player.id);
-                if (possibleTargets.length === 0) {
-                    logMessage(`No other players to target with revolutionary tactics.`);
-                    return false;
-                }
-                
-                // For human players, show target selection
-                if (player.isHuman) {
-                    promptTargetSelection(
-                        player, 
-                        possibleTargets, 
-                        "Choose a player to reduce their Influence by 5:",
-                        (targetPlayer) => {
-                            if (targetPlayer) {
-                                // Apply the effect to the chosen target
-                                updatePlayerResources(targetPlayer.id, { influence: -5 });
-                                player.abilityUsed = true;
-                                console.log(`${player.name} used revolutionary tactics against ${targetPlayer.name}`);
-                                logMessage(`${player.name} used revolutionary tactics against ${targetPlayer.name}: -5 Influence to target!`);
-                                updatePlayerInfo();
-                            } else {
-                                // User canceled, don't mark ability as used
-                                logMessage(`${player.name} canceled using revolutionary tactics.`);
-                            }
-                        }
-                    );
-                    // Return true to indicate successful ability use, but don't mark as used yet
-                    // The callback will handle that when selection is made
-                    return true;
-                } else {
-                    // For AI, just target the first player
-                    const target = possibleTargets[0];
-                    updatePlayerResources(target.id, { influence: -5 });
-                    player.abilityUsed = true;
-                    console.log(`AI ${player.name} used ability: revolutionary tactics targeting ${target.name}`);
-                    logMessage(`${player.name} used revolutionary tactics against ${target.name}: -5 Influence to target!`);
-                    return true;
-                }
+        case 'sabotageImmunity': { // REVOLUTIONARY
+            // Already passive for one sabotage, can be used to sabotage another player
+            // Display a target selection UI for the player
+            const possibleTargets = getPlayers().filter(p => p.id !== player.id);
+            if (possibleTargets.length === 0) {
+                logMessage(`No other players to target with revolutionary tactics.`);
+                return false;
             }
+            
+            // For human players, show target selection
+            if (player.isHuman) {
+                const handleTargetSelection = (targetPlayer) => {
+                    if (targetPlayer) {
+                        // Apply the effect to the chosen target
+                        updatePlayerResources(targetPlayer.id, { influence: -5 });
+                        player.abilityUsed = true;
+                        console.log(`${player.name} used revolutionary tactics against ${targetPlayer.name}`);
+                        logMessage(`${player.name} used revolutionary tactics against ${targetPlayer.name}: -5 Influence to target!`);
+                        updatePlayerInfo();
+                    } else {
+                        // User canceled, don't mark ability as used
+                        logMessage(`${player.name} canceled using revolutionary tactics.`);
+                    }
+                };
+                
+                promptTargetSelection(
+                    player, 
+                    possibleTargets, 
+                    "Choose a player to reduce their Influence by 5:",
+                    handleTargetSelection
+                );
+                // Return true to indicate successful ability use, but don't mark as used yet
+                // The callback will handle that when selection is made
+                return true;
+            } else {
+                // For AI, just target the first player
+                const target = possibleTargets[0];
+                updatePlayerResources(target.id, { influence: -5 });
+                player.abilityUsed = true;
+                console.log(`AI ${player.name} used ability: revolutionary tactics targeting ${target.name}`);
+                logMessage(`${player.name} used revolutionary tactics against ${target.name}: -5 Influence to target!`);
+                return true;
+            }
+        }
             
         case 'influenceTheftImmunity': // COLONIALIST
             // Already passive, but can be used to gain influence
@@ -460,11 +463,11 @@ export const decrementImmunityTurns = () => {
  * @param {number} [turns=1] - Duration of block.
  */
 export const blockTrade = (playerId, turns = 1) => {
-     const player = getPlayerById(playerId);
-     if (player) {
-         player.tradeBlockedTurns = Math.max(player.tradeBlockedTurns, turns);
-         console.log(`${player.name} trade blocked for ${turns} turn(s). Total: ${player.tradeBlockedTurns}`);
-     }
+    const player = getPlayerById(playerId);
+    if (player) {
+        player.tradeBlockedTurns = Math.max(player.tradeBlockedTurns, turns);
+        console.log(`${player.name} trade blocked for ${turns} turn(s). Total: ${player.tradeBlockedTurns}`);
+    }
 };
 
 /**
@@ -481,12 +484,12 @@ export const isTradeBlocked = (playerId) => {
  * Decrements trade block turns for all players.
  */
 export const decrementTradeBlockTurns = () => {
-     players.forEach(p => {
-         if (p.tradeBlockedTurns > 0) {
-             p.tradeBlockedTurns--;
-             console.log(`Trade block turns decremented for ${p.name}. Remaining: ${p.tradeBlockedTurns}`);
-         }
-     });
+    players.forEach(p => {
+        if (p.tradeBlockedTurns > 0) {
+            p.tradeBlockedTurns--;
+            console.log(`Trade block turns decremented for ${p.name}. Remaining: ${p.tradeBlockedTurns}`);
+        }
+    });
 };
 
 /**

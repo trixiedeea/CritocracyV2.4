@@ -1,27 +1,65 @@
 // Main entry point for Critocracy game
 
 import { initializeUI, showScreen, setupPlayerCountUI } from './ui.js';
-import { setupBoard } from './board.js'; 
+import { 
+    setupBoard, 
+    drawBoard,
+    findSpaceDetailsByCoords,
+    getNextStepOptions,
+    getPathColorFromCoords,
+    scaleCoordinates,
+    unscaleCoordinates,
+    animateTokenToPosition,
+    startMoveAnimation
+} from './board.js';
+import { initGame } from './game.js';
 import './animations.js'; // Import animations module
 
-// Initialize the UI when the DOM is ready
+// Board Constants
+const ORIGINAL_WIDTH = 1536;
+const ORIGINAL_HEIGHT = 1024;
+
+// Path Colors
+const PATH_COLORS = {
+    PURPLE: '#9C54DE', // Purple
+    BLUE:   '#1B3DE5', // Blue
+    CYAN:   '#00FFFF', // Cyan
+    PINK:   '#FF66FF'  // Pink
+};
+
+// Initialize the game when the DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM fully loaded. Initializing Critocracy UI...");
+    console.log("DOM fully loaded and parsed. Initializing Critocracy...");
 
     try {
-        // 1. Initialize Board Module (Load images, set up canvas)
-        const boardReady = await setupBoard(); 
+        // 1. Initialize Game Logic (Cards, Board spaces, Players)
+        const gameReady = await initGame();
+        if (!gameReady) {
+            throw new Error("Core game logic failed to initialize.");
+        }
+
+        // 2. Initialize Board Module (Load images, set up canvas)
+        const boardReady = await setupBoard();
         if (!boardReady) {
             throw new Error("Board module failed to initialize (images/canvas).");
         }
 
-        // 2. Initialize UI (Setup screens, event listeners)
+        // 3. Initialize UI (Setup screens, event listeners)
         const uiReady = initializeUI();
         if (!uiReady) {
             throw new Error("UI failed to initialize.");
         }
+
+        // 4. Initial Board Draw (Needs canvas element to exist first)
+        const canvas = document.getElementById('board-canvas');
+        if (canvas) {
+            drawBoard(); // Perform the initial draw
+        } else {
+            console.error("Board canvas element not found! Cannot perform initial draw.");
+            throw new Error("Board canvas missing.");
+        }
         
-        console.log("Critocracy UI ready");
+        console.log("Critocracy initialization sequence complete. Ready for user interaction.");
         
         // Define the function to show player count screen
         function showPlayerCountScreen() {
@@ -49,11 +87,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
     } catch (error) {
-        console.error("CRITICAL ERROR during initial setup:", error);
-        // Display a user-friendly error message
+        console.error("CRITICAL ERROR during game initialization:", error);
+        // Display a user-friendly error message on the page
         const body = document.querySelector('body');
         if (body) {
-             body.innerHTML = '<div style="color: red; padding: 20px;"><h1>Setup Error</h1><p>Could not prepare the game interface. Please check the console (F12) for details and try refreshing.</p></div>';
+            body.innerHTML = '<div style="color: red; padding: 20px;"><h1>Initialization Error</h1><p>Could not start the game. Please check the console (F12) for details and try refreshing.</p></div>';
         }
     }
 });
