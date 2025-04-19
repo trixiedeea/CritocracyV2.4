@@ -6,21 +6,22 @@ import {
     drawBoard, 
     startMoveAnimation,
     setupBoard,
-    findSpaceDetailsByCoords,
-    getNextStepOptions,
     highlightPlayerChoices,
-    highlightEndOfTurnCardBoxes
+    highlightEndOfTurnCardBoxes,
+    getNextStepOptions,
+    getPathColorFromCoords
 } from './board.js';
 import { 
-    START_SPACE
+    START_SPACE,
+    PATH_COLORS
 } from './board-data.js';
 import { 
     setupDecks, 
     drawCard, 
     applyCardEffects,
-    applyEndOfTurnCardEffects,
     DECK_TYPES,
     logCardDraw,
+    getDeckTypeForSpace
 } from './cards.js';
 import { 
     createPlayer, 
@@ -32,7 +33,9 @@ import {
     resetPlayers,
     grantTemporaryImmunity,
     decrementTradeBlockTurns,
-    getPlayerById
+    getPlayerById,
+    decrementImmunityTurns,
+    useSpecialAbility
 } from './players.js';
 
 // Direct UI imports are necessary for prompts and direct feedback
@@ -43,7 +46,6 @@ import {
     promptForTradeResponse,
     logMessage,
     clearMessages,
-    showDiceRollAnimation,
     hideDiceRollAnimation,
     drawPlayers,
     highlightChoices,
@@ -64,12 +66,9 @@ import {
 } from './logging.js';
 
 // Create a global game handlers object for board interactions
-// Add this after initializing gameState
 export const gameHandlers = {
     handleEndOfTurnCardDraw,
-    handleSpecialEventCardDraw,
-    handleMoveClick,
-    handleDeckClick
+    handleSpecialEventCardDraw
 };
 
 // Make the handlers available on the window object
@@ -187,15 +186,6 @@ export async function initializeGame(playerConfigs) {
              throw new Error("Player configurations are required to initialize the game.");
         }
         
-        const humanPlayers = playerConfigs.filter(p => p.isHuman);
-        let humanRole = null;
-        if (humanPlayers.length === 1) {
-             humanRole = humanPlayers[0].role;
-        } else if (humanPlayers.length > 1) {
-             console.warn("Multiple human players detected. Specific CPU names based on the *first* human's role.");
-             humanRole = humanPlayers[0].role;
-        }
-
         const addedPlayerIds = [];
         const assignedRoles = new Set();
 
@@ -341,9 +331,15 @@ function prepareTurnForPlayer(player) {
         });
         
         if (!player.isHuman) {
-             const choice = gameState.currentChoices[0];
-             console.log(`AI ${player.name} chooses first path: ${choice.pathColor}`);
-             setTimeout(() => resolvePlayerChoice(player.id, choice), 500);
+            // Add randomness to AI path choice
+            const choices = [...gameState.currentChoices];
+            const choiceIndex = Math.floor(Math.random() * choices.length);
+            const choice = choices[choiceIndex];
+            console.log(`AI ${player.name} chooses path: ${choice.pathColor}`);
+            
+            // Add human-like delay (800-1200ms)
+            const delay = 800 + Math.floor(Math.random() * 400);
+            setTimeout(() => resolvePlayerChoice(player.id, choice), delay);
         }
     } else {
         console.log(`${player.name} can roll the dice.`);
@@ -351,8 +347,10 @@ function prepareTurnForPlayer(player) {
         gameState.turnState = 'AWAITING_ROLL';
 
         if (!player.isHuman) {
-             console.log(`AI ${player.name} rolling dice...`);
-             setTimeout(() => handlePlayerAction(player.id, 'ROLL_DICE'), 500);
+            console.log(`AI ${player.name} rolling dice...`);
+            // Add human-like delay (800-1200ms)
+            const delay = 800 + Math.floor(Math.random() * 400);
+            setTimeout(() => handlePlayerAction(player.id, 'ROLL_DICE'), delay);
         }
     }
     updatePlayerInfo();
@@ -382,135 +380,144 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
     let eotCard;
     let success;
     
-    switch (actionType) {
-        case 'ROLL_DICE':
-            // Handle rolling the dice and movement
-            return handleDiceRoll(playerId);
+    try {
+        switch (actionType) {
+            case 'ROLL_DICE':
+                // Handle rolling the dice and movement
+                return handleDiceRoll(playerId);
             
-        case 'DRAW_PATH_CARD':
-            // Handle drawing a card from a path deck (purple, blue, cyan, pink)
-            if (gameState.turnState !== 'AWAITING_PATH_CARD') {
-                console.error(`Cannot draw path card: Invalid game state ${gameState.turnState}`);
+            case 'DRAW_PATH_CARD':
+                // Handle drawing a card from a path deck (purple, blue, cyan, pink)
+                if (gameState.turnState !== 'AWAITING_PATH_CARD') {
+                    console.error(`Cannot draw path card: Invalid game state ${gameState.turnState}`);
+                    return false;
+                }
+                
+                deckColor = actionParams.deckColor || player.currentPath;
+                if (!deckColor) {
+                    console.error(`Cannot draw path card: No deck color specified`);
+                    return false;
+                }
+                
+                // Draw a card from the appropriate deck
+                pathCard = drawCard(deckColor);
+                if (!pathCard) {
+                    console.error(`Failed to draw card from ${deckColor} deck`);
+                    return false;
+                }
+                
+                // Show the card with animation
+                await handleCardDisplay(pathCard, deckColor, player);
+                
+                // Apply card effects
+                applyCardEffects(pathCard, player);
+                
+                // Move to end of turn card phase
+                gameState.turnState = 'AWAITING_END_OF_TURN_CARD';
+                
+                // For human players, prompt to draw end of turn card
+                if (player.isHuman) {
+                    logMessage('Click on an End of Turn card to draw');
+                } else {
+                    // CPU draws end of turn card automatically
+                    setTimeout(() => {
+                        handlePlayerAction(playerId, 'DRAW_END_OF_TURN_CARD');
+                    }, 1500);
+                }
+                
+                return true;
+            
+            case 'DRAW_END_OF_TURN_CARD':
+                // Handle drawing an end of turn card
+                if (gameState.turnState !== 'AWAITING_END_OF_TURN_CARD' && gameState.turnState !== 'ACTION_COMPLETE') {
+                    console.error(`Cannot draw end of turn card: Invalid game state ${gameState.turnState}`);
+                    return false;
+                }
+                
+                // For human players, they can select which end of turn box to draw from
+                boxNumber = player.isHuman ? (actionParams.cardBoxNumber || 1) : Math.floor(Math.random() * 2) + 1;
+                
+                // Draw card from end of turn deck
+                eotCard = drawCard('end_of_turn', boxNumber);
+                if (!eotCard) {
+                    console.error(`Failed to draw end of turn card from box ${boxNumber}`);
+                    return false;
+                }
+                
+                // Show the card with animation
+                await handleCardDisplay(eotCard, 'end_of_turn', player);
+                
+                // Apply card effects
+                applyCardEffects(eotCard, player);
+                
+                // End turn
+                gameState.turnState = 'ACTION_COMPLETE';
+                
+                // Mark that player has drawn their end of turn card
+                player.hasDrawnEndOfTurnCard = true;
+                
+                // For human players, enable end turn button
+                if (player.isHuman) {
+                    updateGameControls();
+                } else {
+                    // Add human-like delay (800-1200ms)
+                    const delay = 800 + Math.floor(Math.random() * 400);
+                    setTimeout(() => {
+                        handlePlayerAction(playerId, 'END_TURN');
+                    }, delay);
+                }
+                
+                return true;
+            
+            case 'END_TURN':
+                // Handle ending the current player's turn
+                if (gameState.turnState !== 'ACTION_COMPLETE') {
+                    console.error(`Cannot end turn: Invalid game state ${gameState.turnState}`);
+                    return false;
+                }
+                
+                // Reset turn-specific flags
+                player.hasDrawnEndOfTurnCard = false;
+                
+                // Move to the next player
+                advanceToNextPlayer();
+                
+                return true;
+            
+            case 'USE_ABILITY':
+                // Handle player using their role-specific ability
+                if (gameState.turnState !== 'AWAITING_ROLL' && gameState.turnState !== 'ACTION_COMPLETE') {
+                    console.error(`Cannot use ability: Invalid game state ${gameState.turnState}`);
+                    return false;
+                }
+                
+                // Check if ability already used
+                if (player.abilityUsed) {
+                    console.error(`Cannot use ability: Already used this game`);
+                    return false;
+                }
+                
+                // Handle role-specific abilities
+                success = usePlayerAbility(player);
+                
+                if (success) {
+                    // Mark ability as used
+                    player.abilityUsed = true;
+                    updateGameControls();
+                }
+                
+                return success;
+            
+            default:
+                console.error(`Unknown action type: ${actionType}`);
                 return false;
-            }
-            
-            deckColor = actionParams.deckColor || player.currentPath;
-            if (!deckColor) {
-                console.error(`Cannot draw path card: No deck color specified`);
-                return false;
-            }
-            
-            // Draw a card from the appropriate deck
-            pathCard = drawCard(deckColor);
-            if (!pathCard) {
-                console.error(`Failed to draw card from ${deckColor} deck`);
-                return false;
-            }
-            
-            // Show the card with animation
-            await handleCardDisplay(pathCard, deckColor, player);
-            
-            // Apply card effects
-            applyCardEffects(pathCard, player);
-            
-            // Move to end of turn card phase
-            gameState.turnState = 'AWAITING_END_OF_TURN_CARD';
-            
-            // For human players, prompt to draw end of turn card
-            if (player.isHuman) {
-                logMessage('Click on an End of Turn card to draw');
-            } else {
-                // CPU draws end of turn card automatically
-                setTimeout(() => {
-                    handlePlayerAction(playerId, 'DRAW_END_OF_TURN_CARD');
-                }, 1500);
-            }
-            
-            return true;
-            
-        case 'DRAW_END_OF_TURN_CARD':
-            // Handle drawing an end of turn card
-            if (gameState.turnState !== 'AWAITING_END_OF_TURN_CARD' && gameState.turnState !== 'ACTION_COMPLETE') {
-                console.error(`Cannot draw end of turn card: Invalid game state ${gameState.turnState}`);
-                return false;
-            }
-            
-            // For human players, they can select which end of turn box to draw from
-            boxNumber = player.isHuman ? (actionParams.cardBoxNumber || 1) : Math.floor(Math.random() * 2) + 1;
-            
-            // Draw card from end of turn deck
-            eotCard = drawCard('end_of_turn', boxNumber);
-            if (!eotCard) {
-                console.error(`Failed to draw end of turn card from box ${boxNumber}`);
-                return false;
-            }
-            
-            // Show the card with animation
-            await handleCardDisplay(eotCard, 'end_of_turn', player);
-            
-            // Apply card effects
-            applyCardEffects(eotCard, player);
-            
-            // End turn
-            gameState.turnState = 'ACTION_COMPLETE';
-            
-            // Mark that player has drawn their end of turn card
-            player.hasDrawnEndOfTurnCard = true;
-            
-            // For human players, enable end turn button
-            if (player.isHuman) {
-                updateGameControls();
-            } else {
-                // CPU ends turn automatically
-                setTimeout(() => {
-                    handlePlayerAction(playerId, 'END_TURN');
-                }, 1500);
-            }
-            
-            return true;
-            
-        case 'END_TURN':
-            // Handle ending the current player's turn
-            if (gameState.turnState !== 'ACTION_COMPLETE') {
-                console.error(`Cannot end turn: Invalid game state ${gameState.turnState}`);
-                return false;
-            }
-            
-            // Reset turn-specific flags
-            player.hasDrawnEndOfTurnCard = false;
-            
-            // Move to the next player
-            advanceToNextPlayer();
-            
-            return true;
-            
-        case 'USE_ABILITY':
-            // Handle player using their role-specific ability
-            if (gameState.turnState !== 'AWAITING_ROLL' && gameState.turnState !== 'ACTION_COMPLETE') {
-                console.error(`Cannot use ability: Invalid game state ${gameState.turnState}`);
-                return false;
-            }
-            
-            // Check if ability already used
-            if (player.abilityUsed) {
-                console.error(`Cannot use ability: Already used this game`);
-                return false;
-            }
-            
-            // Handle role-specific abilities
-            success = usePlayerAbility(player);
-            
-            if (success) {
-                // Mark ability as used
-                player.abilityUsed = true;
-                updateGameControls();
-            }
-            
-            return success;
-            
-        default:
-            console.error(`Unknown action type: ${actionType}`);
-            return false;
+        }
+    } catch (error) {
+        console.error(`Error during ${player.name}'s turn (State: ${gameState.turnState}):`, error);
+        logMessage(`Error during ${player.name}'s turn: ${error.message}`);
+        gameState.turnState = 'TURN_ENDED';
+        setTimeout(() => advanceToNextPlayer(), 500);
+        return false;
     }
 }
 
@@ -520,7 +527,12 @@ export async function handlePlayerAction(playerId, actionType, actionParams = {}
  * @param {number} clickX - The raw X coordinate of the click.
  * @param {number} clickY - The raw Y coordinate of the click.
  */
-export function resolveBoardClick(clickX, clickY) {
+export function resolveBoardClick(coords) {
+    if (!coords) {
+        console.error('Invalid click coordinates');
+        return;
+    }
+    
     const playerId = gameState.currentPlayerId;
     const player = getPlayerById(playerId);
     if (!player || !player.isHuman) {
@@ -624,7 +636,7 @@ export function resolvePlayerChoice(playerId, choice) {
             } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
                 // If this was a junction choice, update path if changed
                 if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                    logMessage(`${player.name} changed path to ${getAgeNameFromPathColor(choice.pathColor)}`);
+                    logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
                     player.currentPath = choice.pathColor;
                 }
                 
@@ -673,7 +685,7 @@ export function resolvePlayerChoice(playerId, choice) {
             gameState.turnState = 'ACTION_COMPLETE';
         } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
             if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                logMessage(`${player.name} changed path to ${getAgeNameFromPathColor(choice.pathColor)}`);
+                logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
                 player.currentPath = choice.pathColor;
             }
             
@@ -719,14 +731,20 @@ export function resolvePlayerChoice(playerId, choice) {
  * @param {Object} moveResult - Result data from the move
  */
 function handleEndOfMove(playerId, moveResult) {
-    console.log("handleEndOfMove:", playerId, moveResult);
-    
     const player = getPlayerById(playerId);
     if (!player) {
-        console.error("Player not found in handleEndOfMove");
+        console.error(`Cannot handle end of move: Player ${playerId} not found`);
         return;
     }
-    
+
+    // If there's a path color, it's a special event card space
+    const pathColor = moveResult.spaceDetails.pathColor;
+    if (pathColor) {
+        logMessage(`${player.name} landed on a draw space. Draw a card from the ${getDeckTypeForSpace(pathColor)} deck.`);
+        player.currentPathColor = pathColor;
+        gameState.turnState = 'AWAITING_SPECIAL_EVENT_CARD';
+    }
+
     hideDiceRollAnimation();
     
     // Log the movement completion
@@ -763,7 +781,7 @@ function handleEndOfMove(playerId, moveResult) {
         if (spaceType === 'draw') {
             const pathColor = moveResult.spaceDetails.pathColor;
             if (pathColor) {
-                logMessage(`${player.name} landed on a draw space. Draw a card from the ${getAgeNameFromPathColor(pathColor)} deck.`);
+                logMessage(`${player.name} landed on a draw space. Draw a card from the ${getDeckTypeForSpace(pathColor)} deck.`);
                 player.currentPathColor = pathColor;
                 gameState.turnState = 'AWAITING_SPECIAL_EVENT_CARD';
                 
@@ -779,7 +797,7 @@ function handleEndOfMove(playerId, moveResult) {
             }
         }
         
-        // If it's a junction, handle path choices
+        // If it's a junction or choice point, handle path choices
         if (spaceType === 'junction' || spaceType === 'choicepoint') {
             // Log reaching a choice point
             logGameEvent('PLAYER_AT_CHOICE_POINT', {
@@ -788,11 +806,26 @@ function handleEndOfMove(playerId, moveResult) {
                 coords: player.coords
             });
             
-            handleChoicePoint(playerId, moveResult);
+            // Update game state to indicate we're waiting for a choice
+            gameState.turnState = 'AWAITING_CHOICE';
+            gameState.currentChoices = moveResult.options || [];
+            
+            // If it's a CPU player, automatically choose
+            if (!player.isHuman) {
+                // CPU players always choose the first option
+                setTimeout(() => {
+                    resolvePlayerChoice(playerId, moveResult.options[0]);
+                }, 1000);
+                return;
+            }
+            
+            // For human players, highlight the choice options on the board
+            highlightPlayerChoices(moveResult.options);
+            
+            // Show message to the player
+            logMessage(`${player.name}, choose your path by clicking on one of the highlighted spaces.`);
             return;
         }
-        
-        // Handle other space types as needed...
     }
     
     // If not a special space, proceed to end of turn sequence
@@ -978,126 +1011,6 @@ function triggerGameOver() {
     updateGameControls();
 }
 
-/**
- * Handles the complete turn logic for an AI player.
- * @param {object} aiPlayer - The AI player object.
- */
-async function handleAITurn(aiPlayer) {
-    console.log(`--- handleAITurn for ${aiPlayer.name} ---`);
-    if (gameState.gamePhase !== 'PLAYING' || gameState.currentPlayerId !== aiPlayer.id) {
-        console.warn(`handleAITurn called incorrectly for ${aiPlayer.name}.`);
-        return;
-    }
-
-    const currentState = gameState.turnState;
-    console.log(`AI State: ${currentState}`);
-    
-    // Add a consistent human-like delay before AI actions (800-1200ms)
-    const baseDelay = 800 + Math.floor(Math.random() * 400);
-    await new Promise(resolve => setTimeout(resolve, baseDelay));
-
-    // Declare variables outside switch to avoid lexical declarations
-    let availableChoices;
-    let choiceIndex;
-    let startChoice;
-    let junctionOptions;
-    let junctionIndex;
-    let junctionChoice;
-    let cardBoxNumber;
-    let endOfTurnCard;
-
-    try {
-        switch (currentState) {
-            case 'AWAITING_START_CHOICE':
-                 // AI chooses path with slight randomness to avoid predictability
-                 availableChoices = [...gameState.currentChoices];
-                 // Pick a random option from the available choices (instead of always first)
-                 choiceIndex = Math.floor(Math.random() * availableChoices.length);
-                 startChoice = availableChoices[choiceIndex];
-                 
-                 logMessage(`${aiPlayer.name} is choosing a starting path...`);
-                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause to create anticipation
-                 
-                 console.log(`AI ${aiPlayer.name} chooses path: ${startChoice.pathColor}`);
-                 resolvePlayerChoice(aiPlayer.id, startChoice);
-                 break;
-                 
-            case 'AWAITING_ROLL':
-                 logMessage(`${aiPlayer.name} is rolling the dice...`);
-                 await new Promise(resolve => setTimeout(resolve, 800)); // Pause before rolling
-                 handlePlayerAction(aiPlayer.id, 'ROLL_DICE');
-                 break;
-                 
-            case 'AWAITING_JUNCTION_CHOICE':
-                 // Similar to start choice, add randomness to AI junction choice
-                 junctionOptions = [...gameState.currentChoices];
-                 junctionIndex = Math.floor(Math.random() * junctionOptions.length);
-                 junctionChoice = junctionOptions[junctionIndex];
-                 
-                 logMessage(`${aiPlayer.name} is choosing a path at the junction...`);
-                 await new Promise(resolve => setTimeout(resolve, 1200)); // Longer pause for "thinking" at junction
-                 
-                 console.log(`AI ${aiPlayer.name} chooses junction path to:`, junctionChoice.coordinates);
-                 resolvePlayerChoice(aiPlayer.id, junctionChoice);
-                 break;
-                 
-            case 'AWAITING_END_OF_TURN_CARD':
-                 logMessage(`${aiPlayer.name} is drawing an End of Turn card...`);
-                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause before drawing
-                 
-                 // AI draws from a random end of turn card box (1 or 2)
-                 cardBoxNumber = Math.random() < 0.5 ? 1 : 2;
-                 console.log(`AI ${aiPlayer.name} drawing End of Turn card from box ${cardBoxNumber}.`);
-                 
-                 // Draw card and show it
-                 endOfTurnCard = drawCard(DECK_TYPES.END_OF_TURN);
-                 if (endOfTurnCard) {
-                     await handleCardDisplay(endOfTurnCard, DECK_TYPES.END_OF_TURN, aiPlayer);
-                     
-                     // Pause to show the card (simulating reading time)
-                     await new Promise(resolve => setTimeout(resolve, 2500));
-                     
-                     // Apply card effects
-                     applyEndOfTurnCardEffects(endOfTurnCard, aiPlayer);
-                     aiPlayer.hasDrawnEndOfTurnCard = true;
-                     
-                     // Update UI after effects
-                     updatePlayerInfo();
-                 } else {
-                     logMessage(`No End of Turn cards available.`);
-                     aiPlayer.hasDrawnEndOfTurnCard = true;
-                 }
-                 
-                 // Set state to action complete
-                 gameState.turnState = 'ACTION_COMPLETE';
-                 updateGameControls();
-                 
-                 // End turn after a pause
-                 await new Promise(resolve => setTimeout(resolve, 1200));
-                 handlePlayerAction(aiPlayer.id, 'END_TURN');
-                 break;
-                 
-            case 'ACTION_COMPLETE':
-                 logMessage(`${aiPlayer.name} is ending their turn...`);
-                 await new Promise(resolve => setTimeout(resolve, 1000)); // Pause before ending turn
-                 handlePlayerAction(aiPlayer.id, 'END_TURN');
-                 break;
-                 
-            default:
-                 console.log(`AI ${aiPlayer.name} in unhandled state: ${currentState}. Ending turn as fallback.`);
-                 await new Promise(resolve => setTimeout(resolve, 1000));
-                 handlePlayerAction(aiPlayer.id, 'END_TURN');
-                 break;
-        }
-    } catch (error) {
-         console.error(`Error during AI turn (${aiPlayer.name}, State: ${currentState}):`, error);
-         logMessage(`AI error for ${aiPlayer.name}: ${error.message}`);
-         gameState.turnState = 'TURN_ENDED';
-         await new Promise(resolve => setTimeout(resolve, 500));
-         advanceToNextPlayer();
-    }
-}
-
 export function initiateTrade(sourcePlayer, targetPlayer, offerDetails, requestDetails, isSwap = false) {
     console.log(`Initiating trade: ${sourcePlayer.role} -> ${targetPlayer.role}`);
     console.log('Offer:', offerDetails, 'Request:', requestDetails, 'Swap:', isSwap);
@@ -1225,28 +1138,46 @@ export function initiateAlliance(playerA, playerB) {
     updatePlayerInfo();
 }
 
-/**
- * Handler for deck draws
- * @param {Player} player - The player drawing the card
- * @param {string} pathColor - The color of the path/deck to draw from
- */
+// Add this helper function to standardize path color handling
+function getStandardizedPathColor(pathColor) {
+    if (!pathColor) return null;
+    const lowerPathColor = pathColor.toLowerCase();
+    return PATH_COLORS[lowerPathColor] ? lowerPathColor : null;
+}
+
+// Update handleSpecialEventCardDraw to use standardized path color and show card
 export async function handleSpecialEventCardDraw(player, pathColor) {
     if (!player || !pathColor) {
         console.error('Invalid parameters for handleSpecialEventCardDraw');
         return;
     }
 
-    // Draw card from the appropriate deck
-    const card = drawCard(pathColor);
-    if (!card) {
-        console.error(`Failed to draw card from ${pathColor} deck`);
+    const standardizedPathColor = getStandardizedPathColor(pathColor);
+    if (!standardizedPathColor) {
+        console.error(`Invalid path color: ${pathColor}`);
         return;
     }
+
+    // Draw card from the appropriate deck
+    const card = drawCard(standardizedPathColor);
+    if (!card) {
+        console.error(`Failed to draw card from ${standardizedPathColor} deck`);
+        return;
+    }
+
+    // Log the card draw
+    logCardDraw(player.id, card, standardizedPathColor);
+    
+    // Make sure the card has the deckType property and show it
+    const fullCard = { ...card, deckType: standardizedPathColor };
+    await new Promise(resolve => {
+        showCardPopup(fullCard, resolve);
+    });
 
     logGameEvent('CARD_DRAWN', {
         playerId: player.id,
         cardName: card.name,
-        deckType: pathColor
+        deckType: standardizedPathColor
     });
 
     // Mark that card has been drawn and update game state
@@ -1275,277 +1206,69 @@ export async function handleSpecialEventCardDraw(player, pathColor) {
  * Handles a player clicking on the board to move
  * @param {Object} coords - The coordinates the player clicked on
  */
-function handleMoveClick(coords) {
+export function handleMoveClick(coords) {
     console.log("handleMoveClick:", coords);
     
-    // Your existing move click handling code
-    // ...
+    const currentPlayer = gameState.currentPlayer;
+    if (!currentPlayer) {
+        console.error("No current player found");
+        return;
+    }
+
+    // Get valid moves for current player
+    const validMoves = getNextStepOptions(currentPlayer.currentCoords);
+    
+    // Check if clicked coordinates are valid
+    let isValidMove = false;
+    if (validMoves.type === 'Regular' || validMoves.type === 'Finish') {
+        const nextCoords = validMoves.nextCoords;
+        if (nextCoords[0] === coords.x && nextCoords[1] === coords.y) {
+            isValidMove = true;
+        }
+    } else if (validMoves.type === 'Choicepoint') {
+        for (const option of validMoves.options) {
+            if (option.coordinates[0] === coords.x && option.coordinates[1] === coords.y) {
+                isValidMove = true;
+                break;
+            }
+        }
+    }
+
+    if (isValidMove) {
+        // Move the player
+        const moveResult = {
+            success: true,
+            newCoords: coords,
+            pathColor: getPathColorFromCoords(coords.x, coords.y)
+        };
+        handleEndOfMove(currentPlayer.id, moveResult);
+    } else {
+        logMessage("Invalid move. Please select a valid space.");
+    }
 }
 
 /**
  * Handles a player clicking on a deck
  * @param {string} deckName - The name of the deck that was clicked
  */
-function handleDeckClick(deckName) {
+export function handleDeckClick(deckName) {
     console.log("handleDeckClick:", deckName);
     
-    // Your existing deck click handling code
-    // ...
-}
+    const currentPlayer = gameState.currentPlayer;
+    if (!currentPlayer) {
+        console.error("No current player found");
+        return;
+    }
 
-/**
- * Determine which age deck to draw from based on space properties
- * @param {Object} space - The space object with coordinate and color information
- * @returns {string} The deck type to draw from
- */
-function getAgeDeckFromSpace(space) {
-    // If space has an explicit deckType property, use that
-    if (space.deckType) {
-        return space.deckType;
+    // Check if player is allowed to draw from this deck
+    const currentPathColor = getPathColorFromCoords(currentPlayer.currentCoords.x, currentPlayer.currentCoords.y);
+    if (currentPathColor !== deckName.toLowerCase()) {
+        logMessage(`You can only draw from the ${deckName} deck when on a ${deckName} path.`);
+        return;
     }
-    
-    // Otherwise determine from the space color
-    // These path colors MUST match the exact values from PATH_COLORS in board-data.js
-    if (space.color) {
-        switch(space.color.toLowerCase()) {
-            case '#9c54de':
-            case 'purple':
-                return 'AGE_OF_EXPANSION';
-            case '#1b3de5':
-            case 'blue':
-                return 'AGE_OF_RESISTANCE';
-            case '#00ffff':
-            case 'cyan':
-                return 'AGE_OF_RECKONING';
-            case '#ff66ff':
-            case 'pink':
-                return 'AGE_OF_LEGACY';
-            default:
-                return 'END_OF_TURN'; // Default fallback
-        }
-    }
-    
-    // Fallback for spaces that don't have color information
-    return 'END_OF_TURN';
-}
 
-// Function to handle presenting junction choices to the player
-export function presentJunctionChoices(playerId, choices) {
-    const player = getPlayerById(playerId);
-    if (!player) {
-        console.error(`Cannot present choices: Player ${playerId} not found`);
-        return false;
-    }
-    
-    console.log(`Presenting ${choices.length} junction choices to ${player.name}:`, choices);
-    
-    // Update game state
-    gameState.currentChoices = choices;
-    gameState.turnState = 'AWAITING_JUNCTION_CHOICE';
-    
-    // Highlight the choices on the board
-    if (typeof highlightChoices === 'function') {
-        highlightChoices(choices);
-    }
-    
-    // If it's a human player, show a message prompting them to choose
-    if (player.isHuman) {
-        logMessage(`${player.name}, choose your path by clicking on a highlighted space`);
-    } else {
-        // For CPU players, automatically choose the first option after a delay
-        setTimeout(() => {
-            // CPU players don't change paths intentionally - choose the option that keeps them on their current path
-            const currentPathOption = choices.find(choice => 
-                choice.pathColor === player.currentPath
-            );
-            
-            // If there's an option that keeps them on their path, choose it
-            // Otherwise, just take the first option
-            const chosenOption = currentPathOption || choices[0];
-            
-            resolvePlayerChoice(playerId, chosenOption);
-        }, 1500); // Delay to show the highlight before auto-choosing
-    }
-    
-    return true;
-}
-
-// Function to handle presenting initial path choices to the player
-export function presentInitialPathChoices(playerId, choices) {
-    const player = getPlayerById(playerId);
-    if (!player) {
-        console.error(`Cannot present initial choices: Player ${playerId} not found`);
-        return false;
-    }
-    
-    console.log(`Presenting ${choices.length} initial path choices to ${player.name}:`, choices);
-    
-    // Update game state
-    gameState.currentChoices = choices;
-    gameState.turnState = 'AWAITING_START_CHOICE';
-    
-    // Highlight the choices on the board
-    if (typeof highlightChoices === 'function') {
-        // Mark these as starting path choices
-        const pathChoices = choices.map(choice => ({
-            ...choice,
-            type: 'start'
-        }));
-        
-        highlightChoices(pathChoices);
-    }
-    
-    // If it's a human player, show a message prompting them to choose
-    if (player.isHuman) {
-        logMessage(`${player.name}, choose your starting path by clicking on a highlighted space`);
-    } else {
-        // For CPU players, randomly choose a path after a delay
-        setTimeout(() => {
-            // Get a random index
-            const randomIndex = Math.floor(Math.random() * choices.length);
-            const chosenOption = choices[randomIndex];
-            
-            resolvePlayerChoice(playerId, chosenOption);
-        }, 1500); // Delay to show the highlight before auto-choosing
-    }
-    
-    return true;
-}
-
-// Function to handle dice roll actions
-export async function handleDiceRoll(playerId) {
-    const player = getPlayerById(playerId);
-    if (!player) {
-        console.error(`Cannot roll dice: Player ${playerId} not found`);
-        return false;
-    }
-    
-    console.log(`Handling dice roll for ${player.name}`);
-    
-    // Only allow dice rolls in the appropriate state
-    if (gameState.turnState !== 'AWAITING_ROLL') {
-        console.error(`Cannot roll dice: Invalid game state ${gameState.turnState}`);
-        return false;
-    }
-    
-    // Roll the dice
-    const diceResult = Math.floor(Math.random() * 6) + 1;
-    
-    // Show the dice roll animation
-    if (typeof showDiceRollAnimation === 'function') {
-        // Start animation
-        showDiceRollAnimation(true);
-        
-        // Wait a moment for animation to play
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Show result
-        showDiceRollAnimation(false, diceResult);
-        
-        // Wait for animation to complete
-        await new Promise(resolve => setTimeout(resolve, 1500));
-    }
-    
-    // Log the result
-    logMessage(`${player.name} rolled a ${diceResult}!`, 'dice');
-    
-    // Update UI message
-    logMessage(`${player.name} rolled ${diceResult}`);
-    
-    // Calculate possible moves
-    const possibleMoves = getPossibleMoves(player, diceResult);
-    
-    // Update game state
-    gameState.currentDiceRoll = diceResult;
-    gameState.movesRemaining = diceResult;
-    gameState.turnState = 'MOVING';
-    
-    // Update UI
-    updateGameComponents();
-    
-    return true;
-}
-
-/**
- * Calculate possible moves for a player given a number of steps
- * @param {Object} player - The player object
- * @param {number} steps - Number of steps to move
- * @returns {Array} - Array of possible destination coordinates
- */
-function getPossibleMoves(player, steps) {
-    if (!player || !player.currentCoords || steps <= 0) {
-        return [];
-    }
-    
-    const possibleDestinations = [];
-    const visited = new Set();
-    
-    // Start with current position
-    const queue = [{
-        coords: player.currentCoords,
-        stepsLeft: steps
-    }];
-    
-    // Use breadth-first search to find all possible destinations
-    while (queue.length > 0) {
-        const current = queue.shift();
-        
-        // Skip if we've already visited this position
-        const coordKey = `${current.coords.x},${current.coords.y}`;
-        if (visited.has(coordKey)) {
-            continue;
-        }
-        
-        // Mark as visited
-        visited.add(coordKey);
-        
-        // If we've used all steps, this is a possible destination
-        if (current.stepsLeft === 0) {
-            possibleDestinations.push(current.coords);
-            continue;
-        }
-        
-        // Get next possible steps
-        const nextOptions = getNextStepOptions(current.coords);
-        
-        // Add next positions to the queue
-        for (const nextCoord of nextOptions) {
-            queue.push({
-                coords: nextCoord,
-                stepsLeft: current.stepsLeft - 1
-            });
-        }
-    }
-    
-    return possibleDestinations;
-}
-
-/**
- * Get the next space coordinates in a player's path
- * @param {Object} currentCoords - Current coordinates {x, y}
- * @returns {Object|null} - Next coordinates or null if no valid next step
- */
-function getNextSpace(currentCoords) {
-    if (!currentCoords) return null;
-    
-    // Use getNextStepOptions to get all possible next coordinates
-    const nextOptions = getNextStepOptions(currentCoords);
-    
-    // If there are no options, return null
-    if (!nextOptions || nextOptions.length === 0) {
-        return null;
-    }
-    
-    // If there's only one option, return it
-    if (nextOptions.length === 1) {
-        return nextOptions[0];
-    }
-    
-    // If there are multiple options, we need to handle the junction
-    // By default, return the first option but in a real game this should
-    // prompt the player to choose a path
-    console.warn('Multiple next steps available - automatically choosing first option');
-    return nextOptions[0];
+    // Draw a card from the deck
+    handleSpecialEventCardDraw(currentPlayer, deckName);
 }
 
 /**
@@ -1553,7 +1276,7 @@ function getNextSpace(currentCoords) {
  * @param {string} playerId - ID of the player at the choice point
  * @param {Array} options - Array of possible path options
  */
-function handleChoicePoint(playerId, options) {
+export function handleChoicePoint(playerId, options) {
     if (!playerId || !options || options.length === 0) {
         console.error('Invalid parameters for handleChoicePoint');
         return;
@@ -1583,9 +1306,6 @@ function handleChoicePoint(playerId, options) {
     
     // Show message to the player
     logMessage(`${player.name}, choose your path by clicking on one of the highlighted spaces.`);
-    
-    // Note: The choice will be resolved when the player clicks on the board
-    // See resolvePlayerChoice function
 }
 
 /**
@@ -1644,13 +1364,41 @@ async function handleCardDisplay(card, deckType, player) {
     });
 }
 
-// Helper function to convert path colors to Age names for display
-function getAgeNameFromPathColor(pathColor) {
-    const ageMap = {
-        'purple': 'Age of Expansion',
-        'blue': 'Age of Resistance',
-        'cyan': 'Age of Reckoning',
-        'pink': 'Age of Legacy'
-    };
-    return ageMap[pathColor.toLowerCase()] || pathColor;
+// Function to handle dice roll actions
+export async function handleDiceRoll(playerId) {
+    const player = getPlayerById(playerId);
+    if (!player) {
+        console.error(`Cannot roll dice: Player ${playerId} not found`);
+        return false;
+    }
+    
+    console.log(`Handling dice roll for ${player.name}`);
+    
+    // Only allow dice rolls in the appropriate state
+    if (gameState.turnState !== 'AWAITING_ROLL') {
+        console.error(`Cannot roll dice: Invalid game state ${gameState.turnState}`);
+        return false;
+    }
+    
+    // Roll the dice
+    const diceResult = Math.floor(Math.random() * 6) + 1;
+    
+    // Log the result
+    logMessage(`${player.name} rolled a ${diceResult}!`, 'dice');
+    
+    // Update UI message
+    logMessage(`${player.name} rolled ${diceResult}`);
+    
+    // Start the movement animation
+    startMoveAnimation(player, diceResult, (result) => handleEndOfMove(player.id, result));
+    
+    // Update game state
+    gameState.currentDiceRoll = diceResult;
+    gameState.movesRemaining = diceResult;
+    gameState.turnState = 'MOVING';
+    
+    // Update UI
+    updateGameComponents();
+    
+    return true;
 }

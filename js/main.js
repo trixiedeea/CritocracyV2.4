@@ -2,30 +2,11 @@
 
 import { initializeUI, showScreen, setupPlayerCountUI } from './ui.js';
 import { 
-    setupBoard, 
-    drawBoard,
-    findSpaceDetailsByCoords,
-    getNextStepOptions,
-    getPathColorFromCoords,
-    scaleCoordinates,
-    unscaleCoordinates,
-    animateTokenToPosition,
-    startMoveAnimation
+    setupBoard,
+    drawBoard
 } from './board.js';
 import { initGame } from './game.js';
 import './animations.js'; // Import animations module
-
-// Board Constants
-const ORIGINAL_WIDTH = 1536;
-const ORIGINAL_HEIGHT = 1024;
-
-// Path Colors
-const PATH_COLORS = {
-    PURPLE: '#9C54DE', // Purple
-    BLUE:   '#1B3DE5', // Blue
-    CYAN:   '#00FFFF', // Cyan
-    PINK:   '#FF66FF'  // Pink
-};
 
 // Initialize the game when the DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
