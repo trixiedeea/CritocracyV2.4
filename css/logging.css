@@ -1,0 +1,152 @@
+/* Logging styles for Critocracy game */
+
+/* Game log container */
+#game-log {
+    font-family: Arial, sans-serif;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+    border: 1px solid #444;
+}
+
+/* Log entry styling */
+.log-entry {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 0;
+    margin-bottom: 2px;
+    line-height: 1.3;
+}
+
+/* Log entry timestamp */
+.timestamp {
+    color: #888;
+    font-size: 0.85em;
+    margin-right: 6px;
+}
+
+/* Different types of log entries */
+.log-entry.action {
+    color: #4CAF50; /* Green for actions */
+}
+
+.log-entry.event {
+    color: #2196F3; /* Blue for events */
+}
+
+.log-entry.resource {
+    color: #FFC107; /* Yellow for resource changes */
+}
+
+.log-entry.card {
+    color: #9C27B0; /* Purple for card-related logs */
+}
+
+.log-entry.error {
+    color: #F44336; /* Red for errors */
+}
+
+.log-entry.warning {
+    color: #FF9800; /* Orange for warnings */
+}
+
+/* Resource change highlights */
+.resource-positive {
+    color: #4CAF50; /* Green for positive changes */
+    font-weight: bold;
+}
+
+.resource-negative {
+    color: #F44336; /* Red for negative changes */
+    font-weight: bold;
+}
+
+/* Resource icons */
+.resource-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 2px;
+    vertical-align: middle;
+}
+
+.resource-icon.money {
+    background-color: #FFD700; /* Gold */
+    border-radius: 50%;
+}
+
+.resource-icon.knowledge {
+    background-color: #1E90FF; /* Blue */
+    border-radius: 2px;
+}
+
+.resource-icon.influence {
+    background-color: #8A2BE2; /* Purple */
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+/* Player name highlighting */
+.player-name {
+    font-weight: bold;
+}
+
+/* Path color indicators */
+.path-color {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 2px;
+    vertical-align: middle;
+}
+
+.path-color.purple { background-color: #9C54DE; }
+.path-color.blue { background-color: #1B3DE5; }
+.path-color.cyan { background-color: #00FFFF; }
+.path-color.pink { background-color: #FF66FF; }
+
+/* Round and turn markers */
+.round-marker {
+    font-weight: bold;
+    color: #fff;
+    background-color: #333;
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin: 5px 0;
+    text-align: center;
+}
+
+/* Controls for the log */
+.log-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 11px;
+}
+
+.log-controls button {
+    background: transparent;
+    border: 1px solid #444;
+    color: #ddd;
+    padding: 2px 5px;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.log-controls button:hover {
+    background-color: #444;
+}
+
+/* Resource change animation */
+@keyframes resourcePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.resource-change {
+    animation: resourcePulse 0.5s ease-in-out;
+} 

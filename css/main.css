@@ -1,0 +1,312 @@
+/* Turn Order Screen */
+#turn-order-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    color: white;
+}
+
+#turn-order-container h2 {
+    font-size: 32px;
+    margin-bottom: 40px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    text-align: center;
+}
+
+.turn-order-players {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 30px;
+    max-width: 800px;
+}
+
+.turn-order-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    min-width: 150px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.turn-order-player.active {
+    background-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+}
+
+.turn-order-player.tied {
+    box-shadow: 0 0 15px rgba(255, 255, 0, 0.6);
+}
+
+.player-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+}
+
+.dice-container {
+    width: 80px;
+    height: 80px;
+    perspective: 600px;
+}
+
+.dice {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 1.5s ease-out;
+    font-size: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    color: black;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.dice.rolling {
+    animation: rolling 1.5s infinite;
+}
+
+@keyframes rolling {
+    0% {
+        transform: rotateX(0deg) rotateY(0deg);
+    }
+    25% {
+        transform: rotateX(180deg) rotateY(90deg);
+    }
+    50% {
+        transform: rotateX(270deg) rotateY(180deg);
+    }
+    75% {
+        transform: rotateX(180deg) rotateY(270deg);
+    }
+    100% {
+        transform: rotateX(360deg) rotateY(360deg);
+    }
+}
+
+.value-1 { background-image: url('../assets/dice-1.png'); background-size: cover; }
+.value-2 { background-image: url('../assets/dice-2.png'); background-size: cover; }
+.value-3 { background-image: url('../assets/dice-3.png'); background-size: cover; }
+.value-4 { background-image: url('../assets/dice-4.png'); background-size: cover; }
+.value-5 { background-image: url('../assets/dice-5.png'); background-size: cover; }
+.value-6 { background-image: url('../assets/dice-6.png'); background-size: cover; }
+
+.order-number {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 30px;
+    height: 30px;
+    background-color: gold;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: black;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+}
+
+.tie-message, .final-message {
+    margin-top: 30px;
+    font-size: 20px;
+    text-align: center;
+    animation: pulse 1.5s infinite;
+    color: #ffdd00;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0.7; transform: scale(1); }
+}
+
+/* Path Choice Popup Styling */
+.path-choice-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #333;
+    border: 2px solid #666;
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+    min-width: 300px;
+    color: white;
+    text-align: center;
+}
+
+.path-choice-popup h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+.path-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.path-button {
+    padding: 12px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.path-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+}
+
+.path-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.path-button.purple {
+    background-color: #9C54DE;
+}
+
+.path-button.pink {
+    background-color: #FF66FF;
+}
+
+.path-button.blue {
+    background-color: #1B3DE5;
+}
+
+.path-button.cyan {
+    background-color: #00FFFF;
+}
+
+/* Player Token Styling */
+.player-token {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+    z-index: 2;
+    transition: all 0.5s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.player-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 18px;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.player-crown {
+    position: absolute;
+    top: -10px;
+    width: 20px;
+    height: 15px;
+    background-image: url('../assets/crown.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* End of Turn Card Styling */
+.card-header.end-of-turn {
+    background-color: black;
+    color: white;
+}
+
+/* Roll Button Styling */
+.roll-button {
+    margin-top: 30px;
+    padding: 12px 28px;
+    font-size: 20px;
+    background-color: #4a6ea9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.roll-button:hover {
+    background-color: #5b80c1;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.roll-button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.roll-button:disabled {
+    background-color: #767676;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+
+.dice-result {
+    margin-top: 10px;
+    font-size: 16px;
+    color: #f8d64e;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+button {
+    transition: background-color var(--transition-speed) ease,
+                transform var(--transition-speed) ease,
+                box-shadow var(--transition-speed) ease;
+}
+
+#start-screen.active {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+} 

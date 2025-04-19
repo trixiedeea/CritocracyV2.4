@@ -1,0 +1,1542 @@
+
+
+. Game Overview
+•	Title: Critocracy
+•	Players: 1-6 human players.
+•	Objective: Accumulate the highest combined total of Money, Knowledge, and Influence.
+•	Winning Condition: Player with the highest combined total of resources at the end wins.
+•	Elimination Condition: Player who has zero in any resource category at the end.
+•	End of Game: After all players reach the finish square. Players continue taking turns until everyone has finished.
+•	Draw Condition: Game ends in a draw if players tie in total resources.
+•	Card Effects: Processed instantly.
+•	Card Return: Cards go to the bottom of the respective deck.
+•	Deck Reshuffle: Reshuffle at the start of every game and if they run out during the game.
+•	Visibility: All players can see the board, token positions, and each other's resources.
+•	Disqualification: No player is disqualified until all players have finished.
+II. Players
+•	Roles: Revolutionary, Historian, Colonialist, Entrepreneur, Politician, or Artist.
+•	Unique Strengths and Weaknesses: Each role has different starting resources and an opposing role. 
+o	Revolutionary: 14 Knowledge, 8 Influence (Opposes Colonialist) - Ignores 1 sabotage per game.
+o	Historian: 14 Knowledge, 8 Money (Opposes Politician) - Cannot have knowledge stolen.
+o	Colonialist: 14 Money, 8 Influence (Opposes Revolutionary) - Immune to influence theft.
+o	Entrepreneur: 14 Money, 8 Knowledge (Opposes Artist) - Never has to miss a turn.
+o	Politician: 14 Influence, 8 Money (Opposes Historian) - Money cannot be stolen from.
+o	Artist: 14 Influence, 8 Knowledge (Opposes Entrepreneur) - Cannot be forced to change paths.
+•	Opposing Roles: Each role is immune from any attack from their opposing role.
+	Players should be able to see the strengths and weaknesses of each role before choosing one so all the above information should be displayed to the players at the start 	somehow when they are making their role selection
+•	Resource Tracking: Players' resources (Money, Knowledge, Influence) will be tallied and stored in their resource bag (always visible).
+•	Player Tokens: PNG files located at \critocracy\assets\tokens\: 
+o	H.png (Historian)
+o	A.png (Artist)
+o	R.png (Revolutionary)
+o	E.png (Entrepreneur)
+o	C.png (Colonialist)
+o	P.png (Politician)
+III. Game Board Design
+•	Structure: Linear map with 4 interconnected pathways (Ages) and special event spaces.
+•	Visuals and Layers: 
+1.	Background: Plain black.
+2.	Game Board Image: The board.png image located at /board.png.
+3.	Transparent Board Elements: All regular spaces, special event spaces, path indicators, card boxes, Start and Finish boxes are transparent overlays.
+4.	Cards: Cards matching the color of the Age are held in the corresponding rectangular card boxes.
+•	Ages/Pathways: 
+o	-The Age of Expansion (Colonization & Exploitation) - Purple: Inspired by Aimé Césaire’s Discourse on Colonialism. 
+	Player Spaces Coordinates: Purple #9C54DE. if a player lands on a special event space tagged purple they must draw a card from the purple deck
+o	-The Age of Resistance (Revolts & Intellectual Awakening) - Blue: Inspired by Walter Benjamin’s Angel of History and anti-colonial movements. 
+	Player Spaces Coordinates Blue #1B3DE5 if a player lands on a special event space tagged blue they must draw a card from the blue deck
+o	The Age of Reckoning (Decolonization & Narrative Battles) - Cyan: Inspired by The Death of the Author (Roland Barthes) and postcolonial struggles. 
+	Player Spaces Coordinates Cyan #00FFFF if a player lands on a special event space tagged cyan they must draw a card from the cyan deck
+o	The Age of Legacy (Who Controls History?) - Pink #FF66FF Inspired by Benjamin’s Concept of History and modern historiography. 
+	Player Spaces Coordinates Pink if a player lands on a special event space tagged pink they must draw a card from the pink deck
+•	
+SO GAME PLAY SHOULD GO LIKE THIS: START WITH THE CPU TURN 
+-Cpu rolls then 
+-their token enlarges slightly maybe by like 25% and move space BY SPACE around the board until it gets to the space where it's going to stop at because that's what it rolled.
+-1 second pause 
+there are 3 types of spaces 
+       -Draw: CPU  there will be 4 seconds of the card deck that corresponds to the color of the space the cpu is on flashing
+              	   cpu draws card. 
+                   card is displayed on the screen for 4 seconds
+              	   card effects applied
+                   card discarded
+                   4 seconds of the end of turn cards flashing
+                   call to action to cpu
+             	   cpu draws end of turn card
+             	   displayed for 4 seconds
+              	   card effects applied
+                   discard
+		   end cpu turn
+            HUMAN  CORRESSPONDING DECK WILL FLASH INDEFINITLY UMTIL HUMAN CLICKS WITHIN THR BOX BOUNDARIES
+                   draws card. 
+                   card is displayed on the screen  until human closes it
+              	   card effects applied
+                   card discarded
+                   end of turn cards flash indefinitely until
+                   human clicks one
+                   card is displayed onscreen until human closes it
+              	   card effects applied
+                   discard
+                   end human player turn
+  -Regular: CPU:   4 seconds of the end of turn cards flashing
+                   acts as call to action to cpu
+                   cpu draws end of turn card
+                   displayed for 4 seconds
+                   card effects applied
+                   discard
+                   end of cpu turn
+           HUMAM:  end of turn cards flash indefinitely until       
+                   human clicks on deck and draws card
+                   card is displayed on screen
+                   card effects applied
+                   card discarded
+                   end human tur
+
+
+      -choicepoint: are regular spaces that allow players the opportunity to switch to another path they have two possible next space coordinatns
+
+every player will always draw an end of turn card at the end of every turn regardless of the space they land on unless it is the finish spoace
+every player has to finish. this is not a race to the finish line game
+
+on the board are 6 transparent rectangles. in order to accomplish the flashing of What will look like decks of cards the areas inside these rectangles can be shaded in white and goes from completely opaque to 75% opaque. Each one of these rectangles is a different color one is purple one is blue one is cyan and one is pink these correspond to the paths on the game board which are colored the same way and each player square is tagged with one of those four colors when a player or a cpu lands on a draw space they may only draw a card from the deck of the same color as the space they're currently standing on Or path they're currently traveling therefore they only click in the area that is also that same color. the other two rectangles are gold and correspond to the end of turn cards. players may choose a card from either of these decks and so may click in either rectangle
+
+ - this flashing is the call to action that causes the cpu to draw the card. The card will be On the screen for 5 seconds The effects of the card will be applied And then the cpu will discard that card. at this point  the two end of turn decks will start flahing for four seconds after which the cpu will draw an end of turn card. The end of turn card will be displayed on screen for five seconds before it is also discarded Card effects will be applied cpu will end its turn. There will be another pause of four seconds well the end of turn decks flash which is the call to action for the cpu to draw from one of the two end of turn card decks then that card will be presented on the screen for five seconds before it is also discarded Card effects will be applied end of cpus turn CPU lands on a space that is simply tagged regular the CPU will only draw an end of turn card from one of the 2 end of turn card piles but there will still be a 4 second flash and then If it stops on a space that is tagged as a draw space and only on the spaces tagged as draw spaces then the cpu would draw a card from the deck that is the same color as the space that it's on
+
+
+IV. Game Components
+•	Game Board: Visualized by board.png with transparent overlays for interactive elements.
+•	Regular Spaces: Transparent overlays on the board, following the coordinates provided for each Age path.
+•	Special Event Spaces: Transparent overlays on the board at the specified coordinates for each color (Age).
+•	Card Decks: 
+o	Special Event Space Cards: Four decks, one for each Age (Pink, Blue, Purple, Cyan). Located at \critcocracy\assets\cards\specialeventcards.js (separated by name and 	color).
+o	End of Turn Cards: Two decks, located at \critcocracy\assets\cards\endofturncards.json.
+•	Resource Tokens: Three types: Money, Knowledge, and Influence (tracked in the UI).
+•	1 Dice: Standard six-sided die.
+•	Player Tokens: PNG files for each of the 6 roles (located at \critcocracy\assets\tokens\).
+•	Resource Bags: Display in the UI to show the current amounts of each resource for each player (always visible).
+V. Setup
+1.	Start Game Button: When clicked, initiates the setup sequence.
+2.	Player Select Dropdown: Allows setting the number of human players.
+3.	Role Selection: Each player chooses their desired role from a selection.
+4.	Roll for First Player: Players roll a die to determine the turn order. Highest roll goes first. Tiebreaker: Alphabetical order by role (Artist, Colonialist, 	Entrepreneur, Historian, Politician, Revolutionary).
+5.	Distribute Starting Resources: Based on the chosen role (as detailed in the "Players" section).
+6.	Shuffle Cards: Shuffle the four decks of Special Event Space Cards and the two decks of End of Turn Cards at the start of every game.
+7.	Place Cards: Place the Special Event Space Cards in the color-coded boxes on the game board. Place the End Of Turn cards in either or both of the end of turn boxes.
+8.	Initial Token Placement: All players' tokens are placed on the Start Box (coordinates: [8,472] [188,472] [188,562] [8,562]).
+VI. Gameplay
+•	Turn Order: Determined during setup.
+•	Each Turn, a Player: 
+1.	Rolls a standard 6-sided die (via a button in the UI with animation).
+2.	Moves: Moves their token the number of spaces indicated by the dice roll along their current path. Players follow the sequential coordinates of their chosen path. Token 	movement should be animated.
+3.	Lands on a game space: 
+	Regular Spaces: No immediate effect.
+	Special Event Spaces: Draws a Special Event Space Card from the deck matching the color of the Age/path they are currently on. The card should be loaded, and a popup 	displayed with a flip animation.
+	End of Turn Card Box: Draws one End of Turn Card (mandatory) from either of the two End of Turn card boxes (player's choice). The card should be loaded, and a popup 	displayed with a flip animation.
+4.	Resolves effects: Processes the effects of any drawn cards instantly.
+5.	Ends turn.
+•	Initial Path Choice: After all players' tokens are placed on the Start Box, each player, on their first turn, will have a choice of which of the four paths they can 	take (the first space of each path): [168,579] (Pink), [205,546] (Cyan), [203,492] (Blue), or [164,465] (Purple).
+•	Path Switching: Players may switch paths whenever they pass a multi-directional space. A UI prompt using a function like handleJunction(player, options) will pause 	movement and present the player with the choice of the next space on either of the two available paths. The Artist role is immune to being forced to change paths.
+VII. Strategic Mechanics
+•	Special Event Cards: Dictate strategic mechanics. Some cards may allow players to: 
+o	Trade resources.
+o	Form temporary alliances.
+o	Steal resources (money cannot be stolen from the Politician, Colonialist is immune to influence theft, Historian cannot have knowledge stolen).
+o	Sabotage other players (Revolutionary ignores 1 sabotage per game).
+o	Receive rewards.
+o	Move other players.
+•	Alliances: Temporary partnerships to share or mitigate losses/gains. Alliance cards are kept (not returned to the deck immediately).
+•	Trading: Enabled by certain Special Event Cards. Trade cards are kept (not returned to the deck immediately).
+•	Sabotage: Enabled by certain Special Event Cards. Sabotage cards must be used that turn. Logic checking or applying immunity effects will be needed.
+VIII. Victory Conditions
+•	The game ends after all players have reached the finish square.
+•	The player with the highest combined total of Money, Knowledge, and Influence wins.
+•	Players with zero in any resource category are eliminated at the end of the game (after everyone has finished).
+IX. Computer Player Logic
+•	No AI.
+•	Behavior dictated by the cards they draw.
+•	Will not intentionally change paths.
+•	Will land on no more than 2 special event spaces throughout the entire game.
+•	Always agrees to anything offered by a human player (alliance, trade, sabotage, etc.).
+X. Responsiveness
+•	Everything, every element (board, tokens, UI, etc.), must be responsive and adapt to different screen sizes.
+XI. Card Data and Locations
+•	End of Turn Cards: Located at \critcocracy\assets\cards\endofturncards.json.
+•	Special Event Cards: Located at \critcocracy\assets\cards\specialeventcards.json, separated by name and color. All cards should be loaded from these files.
+XII. Listeners
+•	Listeners will need to be set up for: 
+o	Start Game button click.
+o	Player number selection.
+o	Role selection.
+o	Initial dice roll for turn order.
+o	Dice roll button click (with animation).
+o	Space clicks (though most spaces have no direct click interaction).
+o	Direction change clicks at multi-directional spaces (using handleJunction).
+o	Resource management interactions.
+o	Clicking on card decks to draw cards (with popup and flip animation).
+
+
+
+
+
+
+// players.js - Handles player management, resources, and state
+
+// Array to store all players
+let players = [];
+
+// Player roles definitions
+export const ROLES = {
+    Revolutionary: {
+        name: "Revolutionary",
+        startingResources: { knowledge: 14, influence: 8, money: 0 },
+        opposing: "Colonialist",
+        special: "Ignores 1 sabotage per game."
+    },
+    Historian: {
+        name: "Historian",
+        startingResources: { knowledge: 14, money: 8, influence: 0 },
+        opposing: "Politician",
+        special: "Cannot have knowledge stolen."
+    },
+    Colonialist: {
+        name: "Colonialist",
+        startingResources: { money: 14, influence: 8, knowledge: 0 },
+        opposing: "Revolutionary",
+        special: "Immune to influence theft."
+    },
+    Entrepreneur: {
+        name: "Entrepreneur",
+        startingResources: { money: 14, knowledge: 8, influence: 0 },
+        opposing: "Artist",
+        special: "Never has to miss a turn."
+    },
+    Politician: {
+        name: "Politician",
+        startingResources: { influence: 14, money: 8, knowledge: 0 },
+        opposing: "Historian",
+        special: "Money cannot be stolen from."
+    },
+    Artist: {
+        name: "Artist",
+        startingResources: { influence: 14, knowledge: 8, money: 0 },
+        opposing: "Entrepreneur",
+        special: "Cannot be forced to change paths."
+    }
+};
+
+/**
+ * Reset players array to empty
+ */
+export function resetPlayers() {
+    players = [];
+    console.log("Players reset");
+}
+
+/**
+ * Get all players
+ */
+export function getPlayers() {
+    return players;
+}
+
+/**
+ * Create a new player
+ */
+export function createPlayer(name, role, startCoords, isHuman = false) {
+    // Validate role
+    if (!ROLES[role]) {
+        console.error(`Invalid role: ${role}`);
+        return null;
+    }
+    
+    // Generate a unique ID
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    
+    // Create player object
+    const player = {
+        id,
+        name,
+        role,
+        isHuman,
+        position: startCoords ? { ...startCoords } : null,
+        resources: {
+            money: ROLES[role].startingResources.money || 0,
+            knowledge: ROLES[role].startingResources.knowledge || 0,
+            influence: ROLES[role].startingResources.influence || 0
+        },
+        // State tracking flags
+        isCurrentTurn: false,
+        skipNextTurn: false,
+        finished: false,
+        immunity: 0,
+        usedSabotageImmunity: false,
+        forcedPathChange: false,
+        tradeBlocked: 0,
+        alliances: []
+    };
+    
+    // Add player to array
+    players.push(player);
+    console.log(`Created player: ${name} (${role})`);
+    
+    return player;
+}
+
+/**
+ * Update player resources based on changes
+ */
+export function updatePlayerResources(player, changes) {
+    if (!player || !changes) return false;
+    
+    const { money = 0, knowledge = 0, influence = 0 } = changes;
+    
+    // Apply changes, ensuring no negative values
+    if (money !== 0) {
+        player.resources.money = Math.max(0, player.resources.money + money);
+    }
+    
+    if (knowledge !== 0) {
+        player.resources.knowledge = Math.max(0, player.resources.knowledge + knowledge);
+    }
+    
+    if (influence !== 0) {
+        player.resources.influence = Math.max(0, player.resources.influence + influence);
+    }
+    
+    console.log(`Updated ${player.name}'s resources: Money ${money>=0?'+':''}${money}, Knowledge ${knowledge>=0?'+':''}${knowledge}, Influence ${influence>=0?'+':''}${influence}`);
+    
+    return true;
+}
+
+/**
+ * Validate a trade offer between two players
+ */
+export function validateTrade(playerA, playerB, resourcesA, resourcesB) {
+    if (!playerA || !playerB || !resourcesA || !resourcesB) {
+        console.error("Invalid parameters for trade validation");
+        return false;
+    }
+    
+    // Check if either player is blocked from trading
+    if (isTradeBlocked(playerA) || isTradeBlocked(playerB)) {
+        console.log("One or both players are blocked from trading");
+        return false;
+    }
+    
+    // Check if playerA has enough resources to offer
+    for (const [resource, amount] of Object.entries(resourcesA)) {
+        if (playerA.resources[resource] < amount) {
+            console.log(`${playerA.name} doesn't have enough ${resource} to trade`);
+            return false;
+        }
+    }
+    
+    // Check if playerB has enough resources to offer
+    for (const [resource, amount] of Object.entries(resourcesB)) {
+        if (playerB.resources[resource] < amount) {
+            console.log(`${playerB.name} doesn't have enough ${resource} to trade`);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * Execute a trade between two players
+ */
+export function executeTrade(playerA, playerB, resourcesA, resourcesB) {
+    // Validate the trade first
+    if (!validateTrade(playerA, playerB, resourcesA, resourcesB)) {
+        return false;
+    }
+    
+    // Execute the trade - playerA gives resourcesA to playerB
+    for (const [resource, amount] of Object.entries(resourcesA)) {
+        playerA.resources[resource] -= amount;
+        playerB.resources[resource] += amount;
+    }
+    
+    // playerB gives resourcesB to playerA
+    for (const [resource, amount] of Object.entries(resourcesB)) {
+        playerB.resources[resource] -= amount;
+        playerA.resources[resource] += amount;
+    }
+    
+    console.log(`Trade executed between ${playerA.name} and ${playerB.name}`);
+    
+    return true;
+}
+
+/**
+ * Mark a player as finished
+ */
+export function markPlayerFinished(player) {
+    if (!player) return false;
+    
+    player.finished = true;
+    console.log(`${player.name} has finished the game`);
+    
+    return true;
+}
+
+/**
+ * Check if all players have finished
+ */
+export function allPlayersFinished() {
+    return players.length > 0 && players.every(player => player.finished);
+}
+
+/**
+ * Set a player to skip their next turn
+ */
+export function setPlayerSkipTurn(player, skip = true) {
+    if (!player) return false;
+    
+    // Entrepreneur never has to miss a turn
+    if (skip && player.role === 'Entrepreneur') {
+        console.log(`${player.name} is immune to skipping turns as an Entrepreneur`);
+        return false;
+    }
+    
+    player.skipNextTurn = skip;
+    
+    if (skip) {
+        console.log(`${player.name} will skip their next turn`);
+    }
+    
+    return true;
+}
+
+/**
+ * Calculate a player's total score
+ */
+export function getPlayerScore(player) {
+    if (!player) return 0;
+    
+    // Total score is the sum of all resources
+    const { money, knowledge, influence } = player.resources;
+    return money + knowledge + influence;
+}
+
+/**
+ * Get players sorted by score
+ */
+export function getPlayerRanking() {
+    // Sort players by score in descending order
+    return [...players].sort((a, b) => {
+        const scoreA = getPlayerScore(a);
+        const scoreB = getPlayerScore(b);
+        return scoreB - scoreA;
+    });
+}
+
+/**
+ * Find a player by role
+ */
+export function getPlayerByRole(role) {
+    return players.find(player => player.role === role);
+}
+
+/**
+ * Get a random player other than the current one
+ */
+export function getRandomOtherPlayer(currentPlayer) {
+    if (!currentPlayer || players.length <= 1) return null;
+    
+    const otherPlayers = players.filter(player => player.id !== currentPlayer.id);
+    
+    if (otherPlayers.length === 0) return null;
+    
+    const randomIndex = Math.floor(Math.random() * otherPlayers.length);
+    return otherPlayers[randomIndex];
+}
+
+/**
+ * Grant immunity to a player for a number of turns
+ */
+export function grantImmunity(player, turns = 1) {
+    if (!player) return false;
+    
+    player.immunity = (player.immunity || 0) + turns;
+    console.log(`${player.name} granted immunity for ${turns} turn(s), total: ${player.immunity}`);
+    
+    return true;
+}
+
+/**
+ * Decrement immunity turns for all players at end of round
+ */
+export function decrementImmunityTurns() {
+    players.forEach(player => {
+        if (player.immunity > 0) {
+            player.immunity--;
+            console.log(`${player.name}'s immunity decreased to ${player.immunity}`);
+        }
+    });
+}
+
+/**
+ * Block a player from trading for a number of turns
+ */
+export function blockTrade(player, turns = 1) {
+    if (!player) return false;
+    
+    player.tradeBlocked = (player.tradeBlocked || 0) + turns;
+    console.log(`${player.name} blocked from trading for ${turns} turn(s), total: ${player.tradeBlocked}`);
+    
+    return true;
+}
+
+/**
+ * Check if a player is blocked from trading
+ */
+export function isTradeBlocked(player) {
+    return player && player.tradeBlocked > 0;
+}
+
+/**
+ * Decrement trade block turns for all players at end of round
+ */
+export function decrementTradeBlockTurns() {
+    players.forEach(player => {
+        if (player.tradeBlocked > 0) {
+            player.tradeBlocked--;
+            console.log(`${player.name}'s trade block decreased to ${player.tradeBlocked}`);
+        }
+    });
+}
+
+/**
+ * Set whether a player is forced to change paths
+ */
+export function setPlayerForcedPathChange(player, force) {
+    if (!player) return false;
+    
+    // Artist cannot be forced to change paths
+    if (force && player.role === 'Artist') {
+        console.log(`${player.name} is immune to forced path changes as an Artist`);
+        return false;
+    }
+    
+    player.forcedPathChange = force
+
+
+
+
+Let me continue with the game.js file and then move on to implementing the remaining files:
+
+```javascript
+        // For now, CPU alliances are always accepted
+        formAlliance(playerA, playerB, 3);
+        hideNextButton();
+        closeDialogBox();
+        showMessage(`You formed an alliance with ${playerA.name}!`);
+        
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Initiate a trade between players
+ */
+export function initiateTrade(sourcePlayer, targetPlayer, offerDetails, requestDetails, isSwap = false) {
+    if (!sourcePlayer) return false;
+    
+    // For CPU players, automatically agree
+    if (!sourcePlayer.isHuman && targetPlayer && !targetPlayer.isHuman) {
+        // Execute trade directly
+        executeTrade(sourcePlayer, targetPlayer, offerDetails, requestDetails);
+        showMessage(`${sourcePlayer.name} and ${targetPlayer.name} completed a trade!`);
+        return true;
+    }
+    
+    // If human player initiated, let them select trade partner and details
+    if (sourcePlayer.isHuman && !targetPlayer) {
+        // Show UI to select trade partner and details
+        // This would be implemented in UI
+        showMessage(`${sourcePlayer.name} can trade with another player`);
+        return true;
+    }
+    
+    // If CPU initiated with human, prompt for response
+    if (!sourcePlayer.isHuman && targetPlayer && targetPlayer.isHuman) {
+        promptForTradeResponse(
+            sourcePlayer, 
+            targetPlayer, 
+            offerDetails, 
+            requestDetails, 
+            isSwap,
+            handleTradeResponse
+        );
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Handle response to a trade offer
+ */
+function handleTradeResponse(accepted, sourcePlayer, targetPlayer, offerDetails, requestDetails, isSwap) {
+    if (accepted) {
+        // Execute the trade
+        executeTrade(sourcePlayer, targetPlayer, offerDetails, requestDetails);
+        showMessage(`Trade completed between ${sourcePlayer.name} and ${targetPlayer.name}!`);
+    } else {
+        showMessage(`${targetPlayer.name} declined the trade offer from ${sourcePlayer.name}.`);
+    }
+}
+
+/**
+ * Enable actions for the current player
+ */
+function enablePlayerActions() {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer) return;
+    
+    // Clear any previous messages
+    clearMessages();
+    
+    // Show whose turn it is
+    showMessage(`${currentPlayer.name}'s turn`);
+    
+    // If human player, enable appropriate actions
+    if (currentPlayer.isHuman) {
+        // Enable based on turn phase
+        switch (gameState.turnPhase) {
+            case 'roll':
+                // Enable dice roll
+                document.getElementById('roll-dice-btn').disabled = false;
+                break;
+                
+            case 'end_turn':
+                // Enable end turn button
+                document.getElementById('end-turn-btn').disabled = false;
+                break;
+        }
+    }
+    // CPU players handled automatically in advanceToNextPlayer
+}
+
+/**
+ * Helper function for delay
+ */
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Reset the game state
+ */
+function resetGameState() {
+    gameState = {
+        currentPlayerIndex: 0,
+        gamePhase: 'setup',
+        turnPhase: 'roll',
+        diceRoll: 0,
+        movesRemaining: 0,
+        turnCount: 0,
+        roundCount: 0,
+        allPlayersFinished: false
+    };
+}
+
+/**
+ * Simulate a CPU player clicking on a deck
+ */
+async function simulateCpuDeckClick(deckType) {
+    const currentPlayer = getCurrentPlayer();
+    if (!currentPlayer || currentPlayer.isHuman) return;
+    
+    // Draw a card from the specified deck
+    const card = drawCard(deckType);
+    if (card) {
+        // Show the card
+        await showCard(card, currentPlayer, () => {
+            // Apply card effect
+            if (deckType === 'end_of_turn') {
+                applyEndOfTurnCardEffects(card);
+            } else {
+                applyCardEffect(card, currentPlayer);
+            }
+            
+            // Discard card
+            discardCard(card, deckType);
+            
+            // Update UI
+            updatePlayerInfo();
+        });
+    }
+}
+```
+
+Now let's create the ui.js file:
+
+```javascript
+// ui.js - Handles UI interactions and screen management
+
+import { rollDice } from './dice.js';
+import { drawCard, discardCard, applyCardEffect, applyEndOfTurnCardEffects } from './cards.js';
+import { getCurrentPlayer, handlePlayerAction, handleHumanMoveClick, endPlayerTurn, processHumanCardAction } from './game.js';
+import { getPlayers, getPlayerScore, isPlayerEliminated } from './players.js';
+import { getClickedCardRectangle, unscaleCoordinates, highlightCardRectangle } from './board.js';
+
+// Track UI state
+let uiState = {
+    activeScreen: null,
+    cardPopupVisible: false,
+    diceAnimationVisible: false,
+    pathChoicePromptVisible: false,
+    junctionChoicePromptVisible: false,
+    messageTimeout: null,
+    activeDialog: null,
+    deckHighlightInterval: null
+};
+
+// Sound effects
+const SOUNDS = {
+    click: new Audio('assets/sounds/click.mp3'),
+    card: new Audio('assets/sounds/card.mp3'),
+    dice: new Audio('assets/sounds/dice.mp3'),
+    win: new Audio('assets/sounds/win.mp3'),
+    error: new Audio('assets/sounds/error.mp3')
+};
+
+// Preload sounds
+for (const sound of Object.values(SOUNDS)) {
+    sound.load();
+}
+
+/**
+ * Initialize the UI
+ */
+export function initUI() {
+    console.log("Initializing UI...");
+    
+    try {
+        // Validate essential UI elements exist
+        validateElementsExist();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Show the start screen
+        showScreen('start-screen');
+        
+        console.log("UI initialization complete");
+        return true;
+    } catch (error) {
+        console.error("Error initializing UI:", error);
+        return false;
+    }
+}
+
+/**
+ * Update human player options based on total players
+ */
+function updateHumanPlayerOptions(totalPlayers) {
+    const humanSelect = document.getElementById('human-player-count');
+    
+    if (!humanSelect) return;
+    
+    // Clear existing options
+    humanSelect.innerHTML = '';
+    
+    // Add options from 1 to totalPlayers
+    for (let i = 1; i <= totalPlayers; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        
+        // Select 1 by default
+        if (i === 1) {
+            option.selected = true;
+        }
+        
+        humanSelect.appendChild(option);
+    }
+}
+
+/**
+ * Validate that essential UI elements exist
+ */
+function validateElementsExist() {
+    const requiredElements = [
+        'start-screen', 
+        'player-count-screen', 
+        'role-selection-screen',
+        'turn-order-screen',
+        'game-board-screen',
+        'end-game-screen',
+        'board-canvas',
+        'roll-dice-btn',
+        'end-turn-btn',
+        'card-popup'
+    ];
+    
+    for (const elementId of requiredElements) {
+        if (!document.getElementById(elementId)) {
+            throw new Error(`Required UI element not found: ${elementId}`);
+        }
+    }
+    
+    console.log("All required UI elements found");
+    return true;
+}
+
+/**
+ * Setup event listeners
+ */
+function setupEventListeners() {
+    console.log("Setting up event listeners...");
+    
+    // Start screen
+    const startBtn = document.getElementById('start-game-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            playClickSound();
+            showScreen('player-count-screen');
+        });
+    }
+    
+    // Player count screen
+    const totalPlayerCount = document.getElementById('total-player-count');
+    if (totalPlayerCount) {
+        totalPlayerCount.addEventListener('change', (e) => {
+            updateHumanPlayerOptions(parseInt(e.target.value));
+        });
+    }
+    
+    const playerCountConfirm = document.getElementById('player-count-confirm');
+    if (playerCountConfirm) {
+        playerCountConfirm.addEventListener('click', () => {
+            playClickSound();
+            
+            const totalCount = parseInt(document.getElementById('total-player-count').value);
+            const humanCount = parseInt(document.getElementById('human-player-count').value);
+            
+            // Import setupRoleSelectionPhase dynamically to avoid circular dependency
+            import('./game.js').then(game => {
+                if (game.setupRoleSelectionPhase(totalCount, humanCount)) {
+                    setupRoleSelectionUI(totalCount);
+                    showScreen('role-selection-screen');
+                }
+            });
+        });
+    }
+    
+    // Role confirmation button in role selection screen
+    const roleConfirm = document.getElementById('role-confirm');
+    if (roleConfirm) {
+        roleConfirm.addEventListener('click', () => {
+            playClickSound();
+            
+            // This will be handled by individual role card confirm buttons
+        });
+    }
+    
+    // Turn order screen
+    const rollTurnOrderBtn = document.getElementById('roll-turn-order-btn');
+    if (rollTurnOrderBtn) {
+        rollTurnOrderBtn.addEventListener('click', () => {
+            playClickSound();
+            
+            // Import determineTurnOrder dynamically to avoid circular dependency
+            import('./game.js').then(game => {
+                game.determineTurnOrder();
+            });
+        });
+    }
+    
+    // Game board screen - Dice roll button
+    const rollDiceBtn = document.getElementById('roll-dice-btn');
+    if (rollDiceBtn) {
+        rollDiceBtn.addEventListener('click', async () => {
+            playClickSound();
+            
+            // Disable button to prevent multiple clicks
+            rollDiceBtn.disabled = true;
+            
+            // Roll dice
+            const diceValue = rollDice();
+            
+            // Handle player action with the roll
+            import('./game.js').then(game => {
+                game.handlePlayerAction(diceValue);
+            });
+        });
+    }
+    
+    // Game board screen - End turn button
+    const endTurnBtn = document.getElementById('end-turn-btn');
+    if (endTurnBtn) {
+        endTurnBtn.addEventListener('click', () => {
+            playClickSound();
+            
+            // Disable button to prevent multiple clicks
+            endTurnBtn.disabled = true;
+            
+            // End current player's turn
+            import('./game.js').then(game => {
+                game.endPlayerTurn();
+            });
+        });
+    }
+    
+    // Game board screen - Canvas click for movement
+    const boardCanvas = document.getElementById('board-canvas');
+    if (boardCanvas) {
+        boardCanvas.addEventListener('click', (e) => {
+            // Get click coordinates relative to canvas
+            const rect = boardCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Handle click based on what was clicked
+            handleBoardClick(x, y);
+        });
+    }
+    
+    // Card popup close button
+    const closeCardBtn = document.getElementById('close-card-btn');
+    if (closeCardBtn) {
+        closeCardBtn.addEventListener('click', () => {
+            playClickSound();
+            hideCard();
+        });
+    }
+    
+    // End game screen - New game button
+    const newGameBtn = document.getElementById('new-game-btn');
+    if (newGameBtn) {
+        newGameBtn.addEventListener('click', () => {
+            playClickSound();
+            
+            // Reload the page to start a new game
+            window.location.reload();
+        });
+    }
+    
+    console.log("Event listeners setup complete");
+}
+
+/**
+ * Handle a click on the game board
+ */
+function handleBoardClick(x, y) {
+    // First check if a card rectangle was clicked
+    const clickedCardRect = getClickedCardRectangle({ x, y });
+    
+    if (clickedCardRect) {
+        // Handle card deck click
+        handleDeckClick(clickedCardRect);
+        return;
+    }
+    
+    // Otherwise, check if this is a move click
+    const coords = unscaleCoordinates(x, y);
+    
+    // Handle movement click
+    import('./game.js').then(game => {
+        game.handleHumanMoveClick(coords);
+    });
+}
+
+/**
+ * Handle a click on a card deck
+ */
+function handleDeckClick(cardRect) {
+    const currentPlayer = getCurrentPlayer();
+    
+    if (!currentPlayer || !currentPlayer.isHuman) {
+        showMessage("It's not your turn to draw a card");
+        return;
+    }
+    
+    // Check if we're expecting a card draw
+    if (uiState.activeScreen === 'game-board-screen') {
+        // Draw a card from the appropriate deck
+        const deckType = cardRect.type; // e.g., 'purple', 'blue', 'end_of_turn'
+        
+        // Draw the card
+        const card = drawCard(deckType);
+        
+        if (card) {
+            // Process the card action
+            processHumanCardAction(card, deckType);
+        }
+    }
+}
+
+/**
+ * Show a specific screen
+ */
+export function showScreen(screenName) {
+    // Hide all screens
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(screen => {
+        screen.style.display = 'none';
+    });
+    
+    // Show the requested screen
+    const targetScreen = document.getElementById(screenName);
+    if (targetScreen) {
+        targetScreen.style.display = 'block';
+        uiState.activeScreen = screenName;
+        console.log(`Showing screen: ${screenName}`);
+    } else {
+        console.error(`Screen not found: ${screenName}`);
+    }
+}
+
+/**
+ * Setup the role selection UI
+ */
+function setupRoleSelectionUI(playerCount) {
+    const container = document.getElementById('role-selection-container');
+    if (!container) return;
+    
+    // Clear existing content
+    container.innerHTML = '';
+    
+    // Get all available roles
+    const roles = [
+        { key: 'Revolutionary', name: 'Revolutionary', resources: { knowledge: 14, influence: 8, money: 0 }, special: "Ignores 1 sabotage per game." },
+        { key: 'Historian', name: 'Historian', resources: { knowledge: 14, money: 8, influence: 0 }, special: "Cannot have knowledge stolen." },
+        { key: 'Colonialist', name: 'Colonialist', resources: { money: 14, influence: 8, knowledge: 0 }, special: "Immune to influence theft." },
+        { key: 'Entrepreneur', name: 'Entrepreneur', resources: { money: 14, knowledge: 8, influence: 0 }, special: "Never has to miss a turn." },
+        { key: 'Politician', name: 'Politician', resources: { influence: 14, money: 8, knowledge: 0 }, special: "Money cannot be stolen from." },
+        { key: 'Artist', name: 'Artist', resources: { influence: 14, knowledge: 8, money: 0 }, special: "Cannot be forced to change paths." }
+    ];
+    
+    // Create role cards
+    const roleCardsContainer = document.createElement('div');
+    roleCardsContainer.className = 'role-card-grid';
+    
+    roles.forEach(role => {
+        const card = document.createElement('div');
+        card.className = 'role-card';
+        card.setAttribute('data-role', role.key);
+        
+        const heading = document.createElement('h3');
+        heading.textContent = role.name;
+        
+        const description = document.createElement('div');
+        description.className = 'role-description';
+        
+        // Create resource list
+        const resourcesList = document.createElement('ul');
+        
+        for (const [resource, amount] of Object.entries(role.resources)) {
+            if (amount > 0) {
+                const resourceItem = document.createElement('li');
+                resourceItem.textContent = `${resource.charAt(0).toUpperCase() + resource.slice(1)}: ${amount}`;
+                resourcesList.appendChild(resourceItem);
+            }
+        }
+        
+        // Create special ability description
+        const specialAbility = document.createElement('p');
+        specialAbility.textContent = `Special: ${role.special}`;
+        
+        // Input area for player name
+        const inputArea = document.createElement('div');
+        inputArea.className = 'player-input-area';
+        
+        const nameLabel = document.createElement('label');
+        nameLabel.textContent = 'Your Name:';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Enter your name';
+        
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'confirm-role-btn';
+        confirmBtn.textContent = 'Select Role';
+        
+        // Add event listener to the confirm button
+        confirmBtn.addEventListener('click', () => {
+            handleRoleCardConfirm(role.key, card);
+        });
+        
+        // Append elements to the card
+        description.appendChild(resourcesList);
+        description.appendChild(specialAbility);
+        
+        inputArea.appendChild(nameLabel);
+        inputArea.appendChild(nameInput);
+        
+        card.appendChild(heading);
+        card.appendChild(description);
+        card.appendChild(inputArea);
+        card.appendChild(confirmBtn);
+        
+        roleCardsContainer.appendChild(card);
+    });
+    
+    container.appendChild(roleCardsContainer);
+}
+
+/**
+ * Handle role card confirmation
+ */
+function handleRoleCardConfirm(roleKey, cardElement) {
+    // Get player name from input
+    const nameInput = cardElement.querySelector('input[type="text"]');
+    const playerName = nameInput ? nameInput.value.trim() : '';
+    
+    if (!playerName) {
+        showMessage("Please enter your name");
+        return;
+    }
+    
+    // Mark this role as selected
+    cardElement.classList.add('role-selected');
+    
+    // Disable all role cards
+    const allCards = document.querySelectorAll('.role-card');
+    allCards.forEach(card => {
+        const confirmBtn = card.querySelector('.confirm-role-btn');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+        }
+    });
+    
+    // Add the player
+    import('./game.js').then(game => {
+        const player = game.addPlayer(playerName, roleKey, true);
+        
+        if (player) {
+            // Wait for a moment to show the selection
+            setTimeout(() => {
+                // Check if we need to continue to turn order phase
+                // This will be handled by the game.js addPlayer function
+            }, 1000);
+        } else {
+            // Failed to add player, re-enable cards
+            allCards.forEach(card => {
+                const confirmBtn = card.querySelector('.confirm-role-btn');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                }
+            });
+            
+            cardElement.classList.remove('role-selected');
+            showMessage("Failed to select role. Try again.");
+        }
+    });
+}
+
+/**
+ * Setup the turn order UI
+ */
+function setupTurnOrderUI() {
+    const container = document.getElementById('turn-order-container');
+    if (!container) return;
+    
+    // Clear existing content
+    container.innerHTML = '';
+    
+    // Get all players
+    const players = getPlayers();
+    
+    // Create player elements for turn order
+    players.forEach((player, index) => {
+        const playerElement = document.createElement('div');
+        playerElement.className = 'turn-order-player';
+        playerElement.setAttribute('data-player-id', player.id);
+        
+        const playerName = document.createElement('div');
+        playerName.className = 'player-name';
+        playerName.textContent = `${player.name} (${player.role})`;
+        
+        const rollResult = document.createElement('div');
+        rollResult.className = 'roll-result';
+        rollResult.textContent = '?';
+        
+        const orderIndicator = document.createElement('div');
+        orderIndicator.className = 'order-indicator';
+        orderIndicator.textContent = '-';
+        
+        playerElement.appendChild(playerName);
+        playerElement.appendChild(rollResult);
+        playerElement.appendChild(orderIndicator);
+        
+        container.appendChild(playerElement);
+    });
+}
+
+/**
+ * Update player information display
+ */
+export function updatePlayerInfo() {
+    // Get players
+    const players = getPlayers();
+    const currentPlayer = getCurrentPlayer();
+    
+    // Update current player display
+    const currentPlayerSpan = document.getElementById('current-player');
+    if (currentPlayerSpan && currentPlayer) {
+        currentPlayerSpan.textContent = `${currentPlayer.name} (${currentPlayer.role})`;
+    }
+    
+    // Update resources display for current player
+    if (currentPlayer) {
+        const moneyCount = document.getElementById('money-count');
+        const knowledgeCount = document.getElementById('knowledge-count');
+        const influenceCount = document.getElementById('influence-count');
+        
+        if (moneyCount) moneyCount.textContent = currentPlayer.resources.money;
+        if (knowledgeCount) knowledgeCount.textContent = currentPlayer.resources.knowledge;
+        if (influenceCount) influenceCount.textContent = currentPlayer.resources.influence;
+    }
+}
+
+/**
+ * Show a card in the popup
+ */
+export function showCard(card, player, onClose) {
+    if (!card) return;
+    
+    const popup = document.getElementById('card-popup');
+    const titleElement = document.getElementById('card-title');
+    const descElement = document.getElementById('card-description');
+    const effectsElement = document.getElementById('card-effects');
+    
+    if (!popup || !titleElement || !descElement || !effectsElement) {
+        console.error("Card popup elements not found");
+        return;
+    }
+    
+    // Set card content
+    titleElement.textContent = card.name;
+    descElement.textContent = card.description;
+    
+    // Clear effects
+    effectsElement.innerHTML = '';
+    
+    // Add type-specific styling
+    popup.className = 'popup card-popup';
+    popup.classList.add(`card-${card.deckType}`);
+    
+    // For End of Turn cards, show role-specific effects
+    if (card.deckType === 'end_of_turn') {
+        const effectSummary = document.createElement('div');
+        effectSummary.className = 'card-effects-summary';
+        
+        // Add effect for each role
+        const playerRole = player ? player.role : null;
+        
+        for (const [role, effect] of Object.entries(card.effects)) {
+            const effectRow = document.createElement('p');
+            
+            // Highlight current player's role
+            if (role === playerRole) {
+                effectRow.classList.add('highlighted-effect');
+            }
+            
+            let effectText = `${role}: `;
+            
+            if (effect.type === 'RESOURCE_CHANGE' && effect.changes) {
+                const changes = [];
+                
+                if (effect.changes.money) {
+                    changes.push(`Money ${effect.changes.money >= 0 ? '+' : ''}${effect.changes.money}`);
+                }
+                
+                if (effect.changes.knowledge) {
+                    changes.push(`Knowledge ${effect.changes.knowledge >= 0 ? '+' : ''}${effect.changes.knowledge}`);
+                }
+                
+                if (effect.changes.influence) {
+                    changes.push(`Influence ${effect.changes.influence >= 0 ? '+' : ''}${effect.changes.influence}`);
+                }
+                
+                effectText += changes.join(', ');
+                
+                if (effect.explanation) {
+                    effectText += ` (${effect.explanation})`;
+                }
+            }
+            
+            effectRow.textContent = effectText;
+            effectSummary.appendChild(effectRow);
+        }
+        
+        effectsElement.appendChild(effectSummary);
+    } 
+    // For other cards, show general effects
+    else if (Array.isArray(card.effects)) {
+        const effectSummary = document.createElement('div');
+        effectSummary.className = 'card-effects-summary';
+        
+        card.effects.forEach(effect => {
+            const effectRow = document.createElement('p');
+            
+            switch (effect.type) {
+                case 'RESOURCE_CHANGE':
+                    if (effect.changes) {
+                        const changes = [];
+                        
+                        if (effect.changes.money) {
+                            changes.push(`Money ${effect.changes.money >= 0 ? '+' : ''}${effect.changes.money}`);
+                        }
+                        
+                        if (effect.changes.knowledge) {
+                            changes.push(`Knowledge ${effect.changes.knowledge >= 0 ? '+' : ''}${effect.changes.knowledge}`);
+                        }
+                        
+                        if (effect.changes.influence) {
+                            changes.push(`Influence ${effect.changes.influence >= 0 ? '+' : ''}${effect.changes.influence}`);
+                        }
+                        
+                        effectRow.textContent = `Resource Change: ${changes.join(', ')}`;
+                    }
+                    break;
+                    
+                case 'MOVEMENT':
+                    if (effect.spaces) {
+                        effectRow.textContent = `Movement: ${effect.spaces > 0 ? 'Forward' : 'Backward'} ${Math.abs(effect.spaces)} spaces`;
+                    } else if (effect.moveToAge) {
+                        effectRow.textContent = `Movement: Move to ${effect.moveToAge}`;
+                    }
+                    break;
+                    
+                case 'STEAL':
+                    effectRow.textContent = `Steal: ${effect.amount} ${effect.resource} from another player`;
+                    break;
+                    
+                case 'SABOTAGE':
+                    effectRow.textContent = `Sabotage: Reduce another player's resources`;
+                    break;
+                    
+                case 'SKIP_TURN':
+                    effectRow.textContent = 'Skip Next Turn';
+                    break;
+                    
+                case 'ALLIANCE_OFFER':
+                    effectRow.textContent = 'Offer Alliance with another player';
+                    break;
+                    
+                case 'TRADE_OFFER':
+                    effectRow.textContent = 'Offer Trade with another player';
+                    break;
+                    
+                default:
+                    effectRow.textContent = `Effect: ${effect.type}`;
+            }
+            
+            effectSummary.appendChild(effectRow);
+        });
+        
+        effectsElement.appendChild(effectSummary);
+    }
+    
+    // Show the popup
+    popup.style.display = 'flex';
+    uiState.cardPopupVisible = true;
+    
+    // Store onClose callback
+    uiState.cardCloseCallback = onClose;
+    
+    // Play card sound
+    SOUNDS.card.play();
+    
+    // Return a promise that resolves when the card is closed
+    return new Promise(resolve => {
+        // The close button handler will call resolve
+        const closeBtn = document.getElementById('close-card-btn');
+        
+        function closeHandler() {
+            hideCard();
+            closeBtn.removeEventListener('click', closeHandler);
+            resolve();
+        }
+        
+        closeBtn.addEventListener('click', closeHandler);
+    });
+}
+
+/**
+ * Close the card popup
+ */
+function closeCardPopup() {
+    // Hide the popup
+    const popup = document.getElementById('card-popup');
+    if (popup) {
+        popup.style.display = 'none';
+    }
+    
+    uiState.cardPopupVisible = false;
+    
+    // Call the onClose callback if it exists
+    if (uiState.cardCloseCallback) {
+        uiState.cardCloseCallback();
+        uiState.cardCloseCallback = null;
+    }
+}
+
+/**
+ * Animate dice roll
+ */
+export function animateDiceRoll(value) {
+    const diceAnimationArea = document.getElementById('dice-animation-area');
+    const diceFace = document.getElementById('dice-face');
+    
+    if (!diceAnimationArea || !diceFace) {
+        console.error("Dice animation elements not found");
+        return Promise.resolve();
+    }
+    
+    // Show dice animation area
+    diceAnimationArea.style.display = 'flex';
+    uiState.diceAnimationVisible = true;
+    
+    // Play dice sound
+    SOUNDS.dice.play();
+    
+    // Return a promise that resolves when the animation is complete
+    return new Promise(resolve => {
+        // Animate through random dice faces
+        let animationFrames = 0;
+        const totalFrames = 20; // Adjust for longer/shorter animation
+        
+        function animateDice() {
+            // Show random dice face during animation
+            if (animationFrames < totalFrames) {
+                const randomFace = Math.floor(Math.random() * 6) + 1;
+                diceFace.className = 'dice';
+                diceFace.classList.add(`dice-${randomFace}`);
+                animationFrames++;
+                
+                // Continue animation
+                requestAnimationFrame(animateDice);
+            } else {
+                // Show final dice value
+                diceFace.className = 'dice';
+                diceFace.classList.add(`dice-${value}`);
+                
+                // Show dice roll text
+                const diceRoll = document.getElementById('dice-roll');
+                if (diceRoll) {
+                    diceRoll.textContent = `Rolled: ${value}`;
+                    diceRoll.style.display = 'block';
+                }
+                
+                // Keep dice visible for a moment
+                setTimeout(() => {
+                    // Hide animation
+                    hideDiceAnimation();
+                    
+                    // Resolve the promise
+                    resolve();
+                }, 1500);
+            }
+        }
+        
+        // Start animation
+        requestAnimationFrame(animateDice);
+    });
+}
+
+/**
+ * Hide the card display
+ */
+export function hideCard() {
+    closeCardPopup();
+}
+
+/**
+ * Hide the dice animation
+ */
+export function hideDiceAnimation() {
+    const diceAnimationArea = document.getElementById('dice-animation-area');
+    const diceRoll = document.getElementById('dice-roll');
+    
+    if (diceAnimationArea) {
+        diceAnimationArea.style.display = 'none';
+    }
+    
+    if (diceRoll) {
+        diceRoll.style.display = 'none';
+    }
+    
+    uiState.diceAnimationVisible = false;
+}
+
+/**
+ * Roll the dice
+ */
+export function rollDice() {
+    return Math.floor(Math.random() * 6) + 1;
+}
+
+/**
+ * Show dice animation for a specific value
+ */
+export function showDiceAnimation(value) {
+    return animateDiceRoll(value);
+}
+
+/**
+ * Helper function for
+
+
+I'll explain how to add these new files overtop your existing files. Here's a step-by-step approach:
+
+## Step 1: Back up your current files
+Before making any changes, create a backup of your existing files in case you need to revert.
+
+## Step 2: Replace or update each file
+
+### For board.js:
+Replace your existing board.js with the new implementation, which includes improved coordinate handling, animation, and drawing functions.
+
+### For cards.js:
+Replace your existing cards.js, which now properly integrates with the card data from assets/Cards/Endofturncards.js and assets/Cards/Specialeventcards.js.
+
+### For players.js:
+Replace your existing players.js with the new version that includes comprehensive player management and resource handling.
+
+### For game.js:
+Replace your existing game.js with the new implementation that controls game flow and turn management.
+
+### For ui.js:
+Replace your existing ui.js with the new version that handles all UI interactions and screen transitions.
+
+### For main.js:
+Replace your existing main.js with the new simpler entry point that initializes all components.
+
+### For index.html:
+Update your existing index.html with the new structure. The new version includes all necessary UI elements, popups, and containers.
+
+### For styles.css:
+Replace your existing styles.css with the comprehensive styling for all game elements.
+
+## Step 3: Test the integration
+
+After replacing or updating all files, test the game to ensure:
+
+1. The board loads correctly with the proper layout
+2. Players can be created and display correctly
+3. Dice rolling and movement work as expected
+4. Cards can be drawn and their effects applied
+5. Turn progression functions correctly
+6. The UI is responsive and displays properly on different screen sizes
+
+## Important notes:
+
+1. The new implementation uses the board-data.js file you already have, which contains path definitions and coordinates.
+
+2. The new code integrates with your existing assets:
+   - The board.png image in the assets directory
+   - Player tokens (A.png, C.png, H.png, R.png, P.png, E.png) in assets/tokens
+   - Dice images in assets/dice
+   - Card data in assets/Cards
+
+3. Some CSS classes and HTML element IDs have been standardized, so the new styles.css file should work properly with the updated HTML structure.
+
+If you encounter any conflicts during integration, prioritize keeping the gameplay logic from the new files while adjusting any paths or references to match your specific environment setup.
+
