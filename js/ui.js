@@ -160,6 +160,7 @@ export function initializeUI() {
     showScreen('start-screen');
     
     console.log("UI Initialized successfully");
+    return true;
 }
 
 // --- Event Handlers Setup ---
