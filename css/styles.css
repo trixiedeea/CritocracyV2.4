@@ -157,10 +157,10 @@ button {
     border-radius: 6px;
     cursor: pointer;
     transition: transform 0.2s;
-}
+        }
 
-button:hover {
-    transform: scale(1.05);
+        button:hover {
+            transform: scale(1.05);
 }
 
 button:disabled {
@@ -179,7 +179,7 @@ button:disabled {
     max-width: 800px;
     margin: 0 auto;
 }
-
+  
 #board-canvas {
     width: 100%;
     height: auto;
@@ -289,12 +289,12 @@ button:disabled {
 }
 
 @keyframes slideInUp {
-    from { 
+    from {
         transform: translateY(20px); 
         opacity: 0;
     }
-    to { 
-        transform: translateY(0); 
+    to {
+        transform: translateY(0);
         opacity: 1;
     }
 }

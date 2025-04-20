@@ -459,9 +459,9 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             // Add human players with their selected roles
             selectedRoles.forEach((role, index) => {
                 playerConfigs.push({
+                    name: `Player ${index + 1}`,
                     role: role,
-                    isAI: false,
-                    playerNumber: index + 1
+                    isHuman: true
                 });
             });
             
@@ -474,14 +474,20 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 const aiRole = remainingRoles.splice(randomIndex, 1)[0];
                 
                 playerConfigs.push({
+                    name: `AI ${i - humanPlayers + 1}`,
                     role: aiRole,
-                    isAI: true,
-                    playerNumber: i + 1
+                    isHuman: false
                 });
             }
             
             // Start the game with the selected roles
-            startGameWithSelectedRoles(playerConfigs);
+            initializeGame(playerConfigs).then(success => {
+                if (success) {
+                    showScreen('game-board-screen');
+                } else {
+                    alert("Failed to start the game. Please try again.");
+                }
+            });
         });
     }
 }
@@ -497,7 +503,7 @@ function startGameWithSelectedRoles(playerConfigs) {
     }
     
     // Ensure we have at least 1 human player and the total is 6 players
-    const humanPlayers = playerConfigs.filter(p => !p.isAI).length;
+    const humanPlayers = playerConfigs.filter(p => p.isHuman).length;
     
     if (humanPlayers < 1) {
         alert("At least 1 human player is required to start the game.");
