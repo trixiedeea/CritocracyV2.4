@@ -277,33 +277,22 @@ export function setupPlayerCountUI() {
     const playerCountConfirmBtn = document.getElementById('player-count-confirm');
     
     if (!totalPlayerCountElement || !humanPlayerCountElement || !playerCountConfirmBtn) {
-        console.error("Player count UI elements not found");
+        console.error("Required player count UI elements not found");
         return;
     }
     
-    // Set fixed total of 6 players
-    if (totalPlayerCountElement) {
-        // Hide or disable the total player count selector since it's fixed at 6
-        const totalPlayerLabel = document.querySelector('label[for="total-player-count"]');
-        if (totalPlayerLabel) {
-            totalPlayerLabel.textContent = "Total Players: 6";
-        }
-        
-        // Either hide the select element or set it to a fixed value of 6
-        totalPlayerCountElement.value = "6";
-        totalPlayerCountElement.disabled = true;
-    }
+    // Set total players to fixed 6 and disable the selector
+    totalPlayerCountElement.value = '6';
+    totalPlayerCountElement.disabled = true;
     
     // Clear and populate human player count options (1-6)
-    if (humanPlayerCountElement) {
-        humanPlayerCountElement.innerHTML = '';
-        for (let i = 1; i <= 6; i++) {
-            const option = document.createElement('option');
-            option.value = i.toString();
-            option.textContent = i.toString();
-            humanPlayerCountElement.appendChild(option);
-        }
-        humanPlayerCountElement.value = "1"; // Default to 1 human player
+    humanPlayerCountElement.innerHTML = '';
+    for (let i = 1; i <= 6; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = i;
+        if (i === 1) option.selected = true;
+        humanPlayerCountElement.appendChild(option);
     }
     
     // Update handler for player count confirmation
