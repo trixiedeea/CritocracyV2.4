@@ -82,29 +82,10 @@ const loadTokenImages = async () => {
     }
 };
 
-/** Helper to draw a fallback circle token (Scaled) */
-const drawFallbackToken = (ctx, canvasX, canvasY, radius, player) => {
-     ctx.fillStyle = player.color || '#DC143C'; // Crimson fallback color
-     ctx.beginPath();
-     const safeRadius = Math.max(1, radius);
-     ctx.arc(canvasX, canvasY, safeRadius, 0, Math.PI * 2);
-     ctx.fill();
-     ctx.fillStyle = '#FFFFFF'; 
-     ctx.font = `${Math.max(8, 10 * boardState.scale)}px Arial`; 
-     ctx.textAlign = 'center';
-     ctx.textBaseline = 'middle';
-     try {
-        const text = player && player.id !== undefined ? player.id.toString() : 'P';
-        ctx.fillText(text, canvasX, canvasY);
-     } catch (e) {
-        console.error("Error drawing fallback token text:", e);
-     }
-};
-
 /**
  * Draws a single player token at its current coordinates (Scaled).
  */
-const drawPlayerToken = (player) => {
+export const drawPlayerToken = (player) => {
     if (!boardState.ctx || !player || !player.currentCoords || !boardState.scale || boardState.scale <= 0) return;
     
     const ctx = boardState.ctx;
@@ -127,24 +108,25 @@ const drawPlayerToken = (player) => {
             );
         } catch (e) {
             console.error(`Error drawing token image for role ${role}:`, e);
-            drawFallbackToken(ctx, canvasX, canvasY, radius, player); 
         }
-    } else {
-        drawFallbackToken(ctx, canvasX, canvasY, radius, player);
     }
 };
 
 /**
- * Draw all player tokens based on their currentCoords.
+ * Draws all player tokens based on their current coordinates.
  */
-const drawAllPlayerTokens = () => {
-    console.log("drawAllPlayerTokens function exists."); // Confirm definition exists
-    const players = getPlayers(); 
-    if (!players || players.length === 0) return;
-    players.forEach(player => {
-        if (player && player.currentCoords) {
-            drawPlayerToken(player); 
-        }
+export const drawAllPlayerTokens = () => {
+    if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
+    
+    // Clear the canvas
+    boardState.ctx.clearRect(0, 0, boardState.canvas.width, boardState.canvas.height);
+    
+    // Draw the board
+    drawBoard();
+    
+    // Draw all player tokens
+    boardState.players.forEach(player => {
+        drawPlayerToken(player);
     });
 };
 
@@ -1029,8 +1011,6 @@ export function animateTokenToPosition(player, startCoords, targetCoords, durati
         const tokenImage = p.role ? boardState.playerTokenImages[p.role] : null;
         if (tokenImage && tokenImage.complete && tokenImage.naturalWidth > 0) {
             boardState.ctx.drawImage(tokenImage, p.x - radius, p.y - radius, tokenSizeOnCanvas, tokenSizeOnCanvas);
-        } else {
-            drawFallbackToken(boardState.ctx, p.x, p.y, radius, p);
         }
     }
     requestAnimationFrame(step);

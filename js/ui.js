@@ -16,7 +16,8 @@ import {
     unscaleCoordinates, // To convert canvas clicks to board coords
     setupBoard, // To initialize board state (if UI triggers it)
     findSpaceDetailsByCoords, // To get space details by coordinates
-    getPathColorFromCoords // To get path color by coordinates
+    getPathColorFromCoords, // To get path color by coordinates
+    drawPlayerToken // To draw player tokens
 } from './board.js'; 
 
 // Animation Imports
@@ -389,7 +390,7 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             </div>
         `;
     }
-    
+
     roleSelectionContainer.innerHTML = roleCards;
     
     // Add click event listeners to role cards
@@ -425,9 +426,6 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             }
         });
     });
-    
-    // Show the role selection screen
-    showScreen('role-selection-screen');
 
     // Set up the confirmation button for role selection
     const roleConfirmButton = document.getElementById('role-confirm');
@@ -439,14 +437,10 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         newBtn.addEventListener('click', () => {
             console.log("Role confirm button clicked");
             
-            // Get total players and human players
-            const totalPlayers = 6; // Fixed at 6
-            const humanPlayerCards = document.querySelectorAll('.role-selection-player');
-            const humanPlayers = humanPlayerCards.length;
-            
             // Check if all human players have selected a role
-            let allHumanPlayersSelected = true;
+            const humanPlayerCards = document.querySelectorAll('.role-selection-player');
             const selectedRoles = [];
+            let allHumanPlayersSelected = true;
             
             humanPlayerCards.forEach((playerDiv, index) => {
                 const selectedCard = playerDiv.querySelector('.role-card.selected');
@@ -455,71 +449,44 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                     alert(`Human Player ${index + 1} has not selected a role!`);
                     return;
                 }
-                
-                const role = selectedCard.getAttribute('data-role');
-                selectedRoles.push(role);
+                selectedRoles.push(selectedCard.getAttribute('data-role'));
             });
             
             if (!allHumanPlayersSelected) {
                 return;
             }
             
-            console.log("Selected roles:", selectedRoles);
-            
             // Create player configurations
             const playerConfigs = [];
             
-            // Human players with selected roles
-            for (let i = 0; i < humanPlayers; i++) {
+            // Add human players with their selected roles
+            selectedRoles.forEach((role, index) => {
                 playerConfigs.push({
-                    id: i + 1,
-                    name: `Player ${i + 1}`,
-                    role: selectedRoles[i],
-                    isHuman: true
+                    role: role,
+                    isAI: false,
+                    playerNumber: index + 1
                 });
-            }
+            });
             
             // Get remaining available roles for AI players
-            const allRoles = Object.keys(PLAYER_ROLES);
-            const remainingRoles = allRoles.filter(role => !selectedRoles.includes(role));
+            const remainingRoles = Object.keys(PLAYER_ROLES).filter(role => !selectedRoles.includes(role));
             
-            // If we need more roles than remaining, allow duplicates
-            let aiRoles = [];
-            const aiCount = totalPlayers - humanPlayers;
-            
-            if (remainingRoles.length >= aiCount) {
-                // Shuffle remaining roles and take what we need
-                aiRoles = shuffleArray([...remainingRoles]).slice(0, aiCount);
-            } else {
-                // Use all remaining roles and duplicate as needed
-                aiRoles = [...remainingRoles];
-                while (aiRoles.length < aiCount) {
-                    aiRoles.push(allRoles[Math.floor(Math.random() * allRoles.length)]);
-                }
-            }
-            
-            // AI players with randomized roles
-            for (let i = 0; i < aiCount; i++) {
+            // Add AI players with random roles from remaining
+            for (let i = humanPlayers; i < totalPlayers; i++) {
+                const randomIndex = Math.floor(Math.random() * remainingRoles.length);
+                const aiRole = remainingRoles.splice(randomIndex, 1)[0];
+                
                 playerConfigs.push({
-                    id: humanPlayers + i + 1,
-                    name: `AI ${i + 1}`,
-                    role: aiRoles[i],
-                    isHuman: false
+                    role: aiRole,
+                    isAI: true,
+                    playerNumber: i + 1
                 });
             }
             
+            // Start the game with the selected roles
             startGameWithSelectedRoles(playerConfigs);
         });
     }
-}
-
-// Helper function to shuffle an array (Fisher-Yates algorithm)
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
 }
 
 // --- Start Game with Selected Roles ---
@@ -533,7 +500,7 @@ function startGameWithSelectedRoles(playerConfigs) {
     }
     
     // Ensure we have at least 1 human player and the total is 6 players
-    const humanPlayers = playerConfigs.filter(p => p.isHuman).length;
+    const humanPlayers = playerConfigs.filter(p => !p.isAI).length;
     
     if (humanPlayers < 1) {
         alert("At least 1 human player is required to start the game.");
@@ -741,85 +708,24 @@ export function hideScreen(screenId) {
  * @param {Array} allPlayers - All players in the game for displaying final standings
  */
 export function showEndGameScreen(winner, allPlayers = []) {
-    // First switch to the end game screen
-    showScreen('end-game-screen');
+    const container = document.getElementById('end-game-screen');
+    if (!container) return;
     
-    const container = elements.endGame.endGameContainer;
-    if (!container) {
-        console.error("End game container not found");
-        return;
-    }
-    
-    // Create content for end game screen
-    let endGameHTML = '<h2>Game Over</h2>';
-    
-    // Show winner
-    if (winner) {
-        const roleInfo = PLAYER_ROLES[winner.role];
-        const playerColor = getPlayerColor(winner.role);
-        
-        endGameHTML += `
-            <div class="winner-section">
-                <h3>🏆 Winner 🏆</h3>
-                <div class="player-card winner" style="border-left-color: ${playerColor}">
-                    <div class="player-name">${winner.name}</div>
-                    <div class="player-role">${roleInfo.name}</div>
-                    <div class="player-resources">
-                        <span class="resource money">💰 ${winner.resources.money ?? 0}</span> 
-                        <span class="resource knowledge">🧠 ${winner.resources.knowledge ?? 0}</span>
-                        <span class="resource influence">🗣️ ${winner.resources.influence ?? 0}</span>
+    // Create end game screen HTML
+    const endGameHTML = `
+        <div class="end-game-content">
+            <h1>Game Over</h1>
+            <h2>${winner.name} Wins!</h2>
+            <div class="final-scores">
+                ${allPlayers.map(player => `
+                    <div class="player-score">
+                        <span class="player-name">${player.name}</span>
+                        <span class="player-role">${player.role}</span>
+                        <span class="player-total">${player.totalScore} points</span>
                     </div>
-                </div>
+                `).join('')}
             </div>
-        `;
-    }
-    
-    // Show all players' final standings
-    if (allPlayers.length > 0) {
-        endGameHTML += '<h3>Final Standings</h3><div class="player-standings">';
-        
-        // Sort players - winner first, then by how far they made it
-        const sortedPlayers = [...allPlayers].sort((a, b) => {
-            // Winner always comes first
-            if (a.id === winner?.id) return -1;
-            if (b.id === winner?.id) return 1;
-            
-            // Then sort by finished status
-            if (a.finished && !b.finished) return -1;
-            if (!a.finished && b.finished) return 1;
-            
-            // Then by position on board if available
-            if (a.boardPosition !== undefined && b.boardPosition !== undefined) {
-                return b.boardPosition - a.boardPosition;
-            }
-            
-            return 0;
-        });
-        
-        sortedPlayers.forEach((player, index) => {
-            if (player.id === winner?.id) return; // Skip winner as they're already shown
-            
-            const roleInfo = PLAYER_ROLES[player.role];
-            const playerColor = getPlayerColor(player.role);
-            
-            endGameHTML += `
-                <div class="player-card" style="border-left-color: ${playerColor}">
-                    <div class="player-name">${index + 1}. ${player.name} ${player.finished ? '(Finished)' : ''}</div>
-                    <div class="player-role">${roleInfo.name}</div>
-                    <div class="player-resources">
-                        <span class="resource money">💰 ${player.resources.money ?? 0}</span> 
-                        <span class="resource knowledge">🧠 ${player.resources.knowledge ?? 0}</span>
-                        <span class="resource influence">🗣️ ${player.resources.influence ?? 0}</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        endGameHTML += '</div>';
-    }
-    
-    // Add button to start new game
-    endGameHTML += `
+        </div>
         <div class="end-game-actions">
             <button id="new-game-btn" class="action-button">Start New Game</button>
         </div>
@@ -838,77 +744,9 @@ export function showEndGameScreen(winner, allPlayers = []) {
     }
 }
 
-// --- Drawing Functions (Update element access) ---
-export function drawPlayerToken(player, coords, isAnimating = false) {
-    if (!player || !coords || !elements.gameBoard.ctx) return;
-    
-    const ctx = elements.gameBoard.ctx;
-    const tokenRadius = isAnimating ? 18 : 15; // Slightly larger during animation
-    const [x, y] = coords;
-    
-    // Set color based on player role
-    let tokenColor;
-    switch (player.role) {
-        case 'Colonialist':
-            tokenColor = '#d4af37'; // Gold
-            break;
-        case 'Indigenous':
-            tokenColor = '#228B22'; // Forest Green
-            break;
-        case 'Merchant':
-            tokenColor = '#4682B4'; // Steel Blue
-            break;
-        case 'Curator':
-            tokenColor = '#800080'; // Purple
-            break;
-        default:
-            tokenColor = '#808080'; // Gray fallback
-    }
-    
-    // Draw a subtle glow effect for current player or during animation
-    if (player.id === getGameState().currentPlayerId || isAnimating) {
-        ctx.beginPath();
-        ctx.arc(x, y, tokenRadius + 4, 0, Math.PI * 2);
-        ctx.fillStyle = isAnimating ? 
-            `rgba(${hexToRgb(tokenColor)}, 0.3)` : 
-            'rgba(255, 255, 255, 0.3)';
-        ctx.fill();
-    }
-    
-    // Draw the token circle
-    ctx.beginPath();
-    ctx.arc(x, y, tokenRadius, 0, Math.PI * 2);
-    ctx.fillStyle = tokenColor;
-    ctx.fill();
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Add player role indicator (first letter)
-    ctx.fillStyle = '#FFF';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(player.role.charAt(0), x, y);
-    
-    // Optional: Add player index indicator
-    if (player.index !== undefined) {
-        ctx.font = 'bold 10px Arial';
-        ctx.fillText(player.index + 1, x, y + tokenRadius + 10);
-    }
-}
-
 export function drawPlayers() {
-    if (!elements.gameBoard.ctx) return;
-    
-    const players = window.game?.getPlayers();
-    if (!players || !Array.isArray(players)) return;
-    
-    players.forEach(player => {
-        if (player.coords && Array.isArray(player.coords) && player.coords.length === 2) {
-            drawPlayerToken(player, player.coords);
-        }
-    });
+    // Token drawing is handled by board.js
+    return;
 }
 
 export function updatePlayerInfo() {
@@ -2329,19 +2167,6 @@ function getPlayerColor(role) {
         ARTIST: '#FF69B4'       // Additional color
     };
     return PLAYER_COLORS[role] || '#808080';
-}
-
-// Helper function to convert hex color to rgb for opacity support
-function hexToRgb(hex) {
-    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function(m, r, g, b) {
-        return r + r + g + g + b + b;
-    });
-    
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? 
-        parseInt(result[1], 16) + ',' + parseInt(result[2], 16) + ',' + parseInt(result[3], 16) :
-        '255,255,255';
 }
 
 /**

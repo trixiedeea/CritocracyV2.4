@@ -163,28 +163,9 @@ export async function initializeGame(playerConfigs) {
             alliances: {}
         };
         
-        // --- Player Creation ---
+        // Validate player configurations
         if (!playerConfigs || playerConfigs.length === 0) {
-            throw new Error("No player configurations provided");
-        }
-        
-        // Create the players based on configs
-        for (const config of playerConfigs) {
-            createPlayer(config.name, config.role, config.isHuman);
-        }
-        
-        // Initialize the logging system with the players
-        initLogging(getPlayers());
-        
-        // Log the game initialization
-        logGameEvent('GAME_INITIALIZED', { 
-            playerCount: playerConfigs.length,
-            playerConfigs: playerConfigs
-        });
-        
-        // --- more existing code ---
-        if (!playerConfigs || playerConfigs.length === 0) {
-             throw new Error("Player configurations are required to initialize the game.");
+            throw new Error("Player configurations are required to initialize the game.");
         }
         
         const addedPlayerIds = [];
@@ -201,7 +182,7 @@ export async function initializeGame(playerConfigs) {
                 addedPlayerIds.push(player.id);
                 assignedRoles.add(player.role);
             } else {
-                 console.error(`Failed to add configured player: ${config.name} (${config.role})`);
+                console.error(`Failed to add configured player: ${config.name} (${config.role})`);
             }
         }
 
@@ -214,32 +195,41 @@ export async function initializeGame(playerConfigs) {
             const availableRoles = Object.keys(PLAYER_ROLES).filter(role => !assignedRoles.has(role));
             
             for (let i = availableRoles.length - 1; i > 0; i--) {
-                 const j = Math.floor(Math.random() * (i + 1));
-                 [availableRoles[i], availableRoles[j]] = [availableRoles[j], availableRoles[i]];
-             }
+                const j = Math.floor(Math.random() * (i + 1));
+                [availableRoles[i], availableRoles[j]] = [availableRoles[j], availableRoles[i]];
+            }
 
-             for (let i = 0; i < cpusToAdd; i++) {
-                  if (availableRoles.length === 0) {
-                       console.error("Ran out of available roles while assigning CPUs!");
-                       break; 
-                  }
-                  const cpuRole = availableRoles.pop();
-                  
-                  let cpuName = `CPU (${cpuRole.substring(0,3)})`;
-                  const cpuPlayer = createPlayer(cpuName, cpuRole, false);
-                  if (cpuPlayer) {
-                       addedPlayerIds.push(cpuPlayer.id);
-                       assignedRoles.add(cpuRole);
-                  } else {
-                      console.error(`Failed to add CPU player ${cpuName} with role ${cpuRole}.`);
-                  }
-             }
+            for (let i = 0; i < cpusToAdd; i++) {
+                if (availableRoles.length === 0) {
+                    console.error("Ran out of available roles while assigning CPUs!");
+                    break; 
+                }
+                const cpuRole = availableRoles.pop();
+                
+                let cpuName = `CPU (${cpuRole.substring(0,3)})`;
+                const cpuPlayer = createPlayer(cpuName, cpuRole, false);
+                if (cpuPlayer) {
+                    addedPlayerIds.push(cpuPlayer.id);
+                    assignedRoles.add(cpuRole);
+                } else {
+                    console.error(`Failed to add CPU player ${cpuName} with role ${cpuRole}.`);
+                }
+            }
         }
 
         if (getPlayers().length !== totalPlayerCount) {
             throw new Error(`Failed to initialize correct number of players. Expected ${totalPlayerCount}, got ${getPlayers().length}`);
         }
         console.log("Players initialized:", getPlayers().map(p => `${p.name} (${p.role})`));
+
+        // Initialize the logging system with the players
+        initLogging(getPlayers());
+        
+        // Log the game initialization
+        logGameEvent('GAME_INITIALIZED', { 
+            playerCount: playerConfigs.length,
+            playerConfigs: playerConfigs
+        });
 
         gameState.turnOrder = addedPlayerIds; 
         console.log("Turn order set:", gameState.turnOrder.map(id => getPlayerById(id)?.name));

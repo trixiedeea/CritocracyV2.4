@@ -40,6 +40,20 @@ const eventHandlers = {
             setupPlayerCountUI();
             showScreen('player-count-screen');
         },
+        'player-count-confirm': () => {
+            const totalPlayers = 6; // Fixed at 6
+            const humanPlayers = parseInt(document.getElementById('human-player-count').value, 10) || 1;
+            
+            // Validate
+            if (humanPlayers < 1 || humanPlayers > 6) {
+                alert("Please select 1-6 human players.");
+                return;
+            }
+            
+            // Setup role selection UI and show the screen
+            setupRoleSelectionUI(totalPlayers, humanPlayers);
+            showScreen('role-selection-screen');
+        },
         'role-confirm': () => handleRoleConfirmation(),
         'roll-dice-btn': () => handleDiceRoll(),
         'end-turn-btn': () => handleEndTurn(),
