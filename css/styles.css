@@ -10,24 +10,294 @@
 
 /* Color variables and theme */
 :root {
-    /* Slimmer UI with reduced sizes */
-    --border-radius: 4px;
-    --button-padding: 4px 8px;
-    --card-padding: 5px;
-    --container-padding: 5px;
-    --heading-margin: 5px 0;
-    --section-margin: 5px;
-    --input-padding: 3px 5px;
+          /* Reset all element sizing */
+          *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Root sizing variables */
+        :root {
+            --full-width: 100%;
+            --full-height: 100%;
+        }
+        
+        /* Base document sizing */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: auto;
+            position: fixed;
+            top: 0;
+            left: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            line-height: 1.6;
+            width: 100%;
+            height: 100%;
+            max-width: 100vw;
+            max-height: 100dvh;
+            overflow-x: auto;
+        }
+
+        /* Start Screen */
+        #start-screen,
+        #player-count-screen,
+        #turn-order-screen,
+        #end-game-screen {
+            background-image: url('../assets/Critocracy.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: auto; /* Add scrolling for very small screens */
+        }
+        
+        /* Base screen class - this should align with styles.css */
+        .screen {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: 1;
+        }
+        
+        .screen.active {
+            display: flex;
+            opacity: 1;
+            z-index: 10;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Animation keyframes */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { 
+                transform: translateY(20px); 
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0); 
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes highlightResource {
+            0% { background-color: transparent; }
+            50% { background-color: rgba(46, 204, 113, 0.3); }
+            100% { background-color: transparent; }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Animation utility classes */
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .animate-slideInUp {
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        .animate-pulse {
+            animation: pulse 1s infinite;
+        }
+
+        /* Apply transitions to elements */
+        button {
+            transition: background-color var(--transition-speed) ease,
+                        transform var(--transition-speed) ease,
+                        box-shadow var(--transition-speed) ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+        
+        /* Start screen explicit positioning */
+        #start-screen {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #start-screen h1 {
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+        
+        #start-game-btn {
+            padding: 30px 30px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.3s;
+            margin-top: 20px;
+        }
+        
+        #start-game-btn:hover {
+            background-color: #3e8e41;
+            transform: scale(1.05);
+        }
+        
+        #start-screen .start-content {
+            max-width: 800px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        /* Grid container adjustments */
+        .grid-container {
+            display: grid;
+            grid-template-rows: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px
+        }
+        
+        .grid-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: rgb(162, 195, 181);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            color: #013b25;
+            cursor: pointer;
+        }
+        
+        .grid-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .grid-item.selected {
+            border: 3px solid #4CAF50;
+            background-color: rgba(76, 175, 79, 0.082);
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        } 
     
-    /* Reduced border widths */
-    --border-width: 1px;
-    --border-thick: 2px;
+        .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }    
     
-    /* Slimmer fonts and spacing */
-    --base-font-size: 14px;
-    --small-font-size: 12px;
-    --large-font-size: 16px;
-    --header-font-size: 18px;
+        .card-text {
+            flex: 1;
+            padding-right: 10px;
+        }
+        
+        .card-text p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+            color: #013b25;
+        }
+        
+        .card-text strong {
+            color: #123b25;
+            font-weight: 600;
+        }
+        
+        .card-image, .token-image {
+            text-align: right;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        
+        .card-image img, .token-image img {
+            max-width: 80px;
+            height: 110px;
+        }
+    
+        .card-footer {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }    
+    
+        /* Role selection buttons and event listener fix */
+    .role-select {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        background-color: #1388a8;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.2s;
+            margin-top: 5px;
+            pointer-events: auto;
+            position: relative;
+            z-index: 5;
+    }
+    
+    .role-select:hover {
+        background-color: #0b7dda;
+        transform: scale(1.05);
+    }
+    
+    .confirm-button-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin-top: 30px;
+        margin-bottom: 30px;
+    }
+
+    /* Add these to manage popup and animation visibility */
+    .popup, #dice-animation-area, #dice-roll {
+        display: none;
+    }
+    
+    .popup.visible, #dice-animation-area.visible, #dice-roll.visible {
+        display: block;
+    }
 
 }
 
@@ -259,7 +529,7 @@ select, input[type="text"] {
     object-fit: contain; /* Maintain aspect ration */
 }
 
-/* Player Info Panel */ !!!!!!!!!!!!
+/* Player Info Panel */
 #player-info-panel {
     display: flex;
     flex-wrap: wrap;
