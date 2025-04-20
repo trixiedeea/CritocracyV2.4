@@ -1014,7 +1014,7 @@ export function initiateTrade(sourcePlayer, targetPlayer, offerDetails, requestD
     updateGameControls();
 }
 
-function handleTradeResponse(accepted, sourcePlayerId, targetPlayerId, offerDetails, requestDetails, isSwap) {
+export function handleTradeResponse(accepted, sourcePlayerId, targetPlayerId, offerDetails, requestDetails, isSwap) {
     gameState.tradePending = false;
     if (accepted) {
          if (!isSwap && !checkResourceAvailability(targetPlayerId, requestDetails)) {
