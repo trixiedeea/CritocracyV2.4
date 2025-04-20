@@ -744,7 +744,8 @@ export function showEndGameScreen(winner, allPlayers = []) {
 }
 
 export function drawPlayers() {
-    // Token drawing is handled by board.js
+    // Player tokens are already handled by HTML
+    // Tokens are in /assets/tokens/ directory (A.png, P.png, etc.)
     return;
 }
 
@@ -1607,13 +1608,9 @@ export function safeResizeCanvas() {
  * Update game components and UI elements
  */
 export function updateGameComponents() {
-    // Handle board resizing
-    safeResizeCanvas();
-    
-    // Update player information
+    // Update player info and controls, but don't draw board or tokens
+    // Board and tokens are handled by HTML
     updatePlayerInfo();
-    
-    // Update turn controls
     updateGameControls();
 }
 

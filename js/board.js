@@ -117,56 +117,17 @@ export const drawPlayerToken = (player) => {
  * Draws all player tokens based on their current coordinates.
  */
 export const drawAllPlayerTokens = () => {
-    if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
-    
-    // Don't clear the canvas or redraw the board here to avoid circular reference
-    
-    // Check if players array exists
-    if (!boardState.players || !Array.isArray(boardState.players)) {
-        console.warn("No players array found in boardState");
-        return;
-    }
-    
-    // Draw all player tokens
-    boardState.players.forEach(player => {
-        drawPlayerToken(player);
-    });
+    // Player tokens are already handled by HTML
+    // A.png for Artist, P.png for Politician, C.png for Colonialist, etc.
+    return;
 };
 
 /**
  * Draws connections between spaces defined in the path arrays (Scaled).
  */
 const drawPathConnections = () => {
-    if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
-    const ctx = boardState.ctx;
-    const scale = boardState.scale;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)'; 
-    ctx.lineWidth = 1; 
-    const allPaths = [AgeOfExpansion, AgeOfResistance, AgeOfReckoning, AgeOfLegacy];
-
-    for (const path of allPaths) {
-        if (!path || !path.segments) continue;
-        
-        for (let i = 0; i < path.segments.length; i++) {
-            const space = path.segments[i];
-            if (!space || !space.coordinates || !space.coordinates[0]) continue;
-            
-            const srcX = space.coordinates[0][0] * scale;
-            const srcY = space.coordinates[0][1] * scale;
-            
-            if (space.Next && Array.isArray(space.Next)) {
-                for (const nextCoord of space.Next) {
-                    if (!Array.isArray(nextCoord) || nextCoord.length < 2) continue;
-                    const nextX = nextCoord[0] * scale;
-                    const nextY = nextCoord[1] * scale;
-                    ctx.beginPath();
-                    ctx.moveTo(srcX, srcY);
-                    ctx.lineTo(nextX, nextY);
-                    ctx.stroke();
-                }
-            }
-        }
-    }
+    // Connections are not needed - skip drawing
+    return;
 };
 
 /**
@@ -184,7 +145,8 @@ const drawPathSpaces = () => {
         const scaledRadius = Math.max(1, radius * scale); 
         const coordKey = `${scaledX.toFixed(1)},${scaledY.toFixed(1)}`; 
         if (!drawnCoords.has(coordKey)) {
-            ctx.fillStyle = color;
+            // Make everything completely transparent - only used for tracking
+            ctx.fillStyle = 'rgba(0, 0, 0, 0)';
             ctx.beginPath();
             ctx.arc(scaledX, scaledY, scaledRadius, 0, Math.PI * 2); 
             ctx.fill();
@@ -192,10 +154,11 @@ const drawPathSpaces = () => {
         }
     };
     
-    const drawScaledPolygon = (polygonCoords, fillColor, strokeColor = 'rgba(0,0,0,0.1)') => {
+    const drawScaledPolygon = (polygonCoords, fillColor, strokeColor = 'rgba(0,0,0,0)') => {
          if (!Array.isArray(polygonCoords) || polygonCoords.length < 3) return;
-         ctx.fillStyle = fillColor;
-         ctx.strokeStyle = strokeColor;
+         // Make polygons transparent - only used for tracking
+         ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+         ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
          ctx.lineWidth = 1;
          ctx.beginPath();
          const [startX, startY] = scaleCoordinates(polygonCoords[0][0], polygonCoords[0][1]);
@@ -208,28 +171,26 @@ const drawPathSpaces = () => {
          ctx.fill();
     };
 
+    // Draw spaces for tracking purposes (invisible)
     if (START_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(START_SPACE.coordinates[0][0], START_SPACE.coordinates[0][1], 'rgba(0, 255, 0, 0.0)', 5);
+        drawScaledPoint(START_SPACE.coordinates[0][0], START_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
     }
-     if (FINISH_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(255, 0, 0, 0.0)', 5);
+    if (FINISH_SPACE?.coordinates?.[0]) {
+        drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
     }
 
     for (const path of allPaths) {
         if (!path || !path.segments) continue;
         
-        // Draw each segment in the path
+        // Draw each segment in the path (invisible)
         for (const space of path.segments) {
             if (!space || !space.coordinates) continue;
             
-            const type = (space.Type || '').toLowerCase();
-            const color = PATH_COLORS[space.pathColor?.toLowerCase()] || '#CCCCCC'; 
-            const fillColor = type.includes('draw') ? '#FFD700' : (type.includes('special') ? '#FFA500' : color); 
-
-            if ((type === 'choicepoint' || type === 'junction') && Array.isArray(space.coordinates) && space.coordinates.length >= 3) {
-                 drawScaledPolygon(space.coordinates, 'rgba(128, 128, 128, 0.0)'); 
+            if ((space.Type === 'choicepoint' || space.Type === 'junction') && 
+                Array.isArray(space.coordinates) && space.coordinates.length >= 3) {
+                drawScaledPolygon(space.coordinates, 'rgba(0, 0, 0, 0)'); 
             } else if (Array.isArray(space.coordinates) && space.coordinates[0]) {
-                 drawScaledPoint(space.coordinates[0][0], space.coordinates[0][1], fillColor, 4); 
+                drawScaledPoint(space.coordinates[0][0], space.coordinates[0][1], 'rgba(0, 0, 0, 0)', 4); 
             }
         }
     }
@@ -868,49 +829,11 @@ function hexToRgb(hex) {
 }
 
 export const drawBoard = () => {
-    if (!boardState.ctx || !boardState.boardImage || !boardState.isInitialized || !boardState.scale || boardState.scale <= 0) return; 
-    const ctx = boardState.ctx;
-    const canvas = boardState.canvas;
-    const boardImage = boardState.boardImage;
+    if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
     
-    // Clear canvas and draw the board image
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    try {
-        ctx.drawImage(boardImage, 0, 0, canvas.width, canvas.height);
-    } catch (e) {
-        console.error("Error drawing board image:", e);
-        ctx.fillStyle = "red";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.fillText("Error drawing board", canvas.width / 2, canvas.height / 2);
-        return;
-    }
-    
-    // Draw path elements
-    drawPathConnections(); 
+    // Draw only the path spaces - no board image or tokens
+    // Board image is already loaded via HTML as /assets/board.png
     drawPathSpaces();
-    
-    // IMPORTANT: We do NOT call drawAllPlayerTokens() here
-    // It must be called separately after drawBoard() to avoid circular reference
-    
-    // Check if we need to highlight End of Turn card boxes
-    try {
-        // Get the current game state from the window object to avoid circular imports
-        if (window.gameState && window.gameState.turnState === 'AWAITING_END_OF_TURN_CARD') {
-            highlightEndOfTurnCardBoxes(ctx);
-        }
-        
-        // Check if we need to highlight a deck (for draw spaces)
-        if (window.gameState && window.gameState.turnState === 'AWAITING_SPECIAL_EVENT_CARD' &&
-            window.gameState.currentPlayer) {
-            const pathColor = getPathColorFromCoords(window.gameState.currentPlayer.position.x, window.gameState.currentPlayer.position.y);
-            if (pathColor) {
-                highlightDeck(ctx, pathColor);
-            }
-        }
-    } catch (e) {
-        console.error("Error checking game state for card box highlights:", e);
-    }
 };
 
 /**
@@ -943,51 +866,30 @@ export const setupBoard = async () => {
     boardState.canvas = canvas;
     boardState.ctx = ctx;
     
-    const boardImage = new Image();
-    boardImage.src = BOARD_IMAGE_PATH;
-    boardState.boardImage = boardImage;
+    // Set as initialized - don't need to load board image, it's in HTML
+    boardState.isInitialized = true;
     
-    const tokenPromise = loadTokenImages();
-    const imageLoadPromise = new Promise((resolve, reject) => {
-        boardImage.onload = () => { console.log("Board image loaded."); resolve(); };
-        boardImage.onerror = () => { console.error("Board image failed to load."); reject(new Error("Board image load error")); };
+    // Set player list
+    boardState.players = getPlayers();
+    
+    // Resize the canvas
+    resizeCanvas(); 
+    
+    // Just draw the spaces (invisibly, for tracking)
+    drawBoard();
+        
+    setupBoardClickListener(canvas);
+    
+    window.addEventListener('resize', () => {
+        if (boardState.isInitialized) {
+            boardState.players = getPlayers();
+            resizeCanvas(); 
+            drawBoard();
+        }
     });
-
-    try {
-        await Promise.all([imageLoadPromise, tokenPromise]);
-        console.log("Image and tokens loaded/attempted.");
-        boardState.isInitialized = true;
-        
-        // Get the latest player list
-        boardState.players = getPlayers();
-        
-        // Resize the canvas
-        resizeCanvas(); 
-        
-        // Draw board and players separately to avoid circular reference
-        drawBoard();  // Draw the board first
-        drawAllPlayerTokens();  // Then draw players on top
-            
-        setupBoardClickListener(canvas);
-        
-        window.addEventListener('resize', () => {
-            if (boardState.isInitialized) {
-                // Update player list before redrawing
-                boardState.players = getPlayers();
-                
-                // Resize and redraw - keeping these separate to avoid circular reference
-                resizeCanvas(); 
-                drawBoard();  // Draw the board
-                drawAllPlayerTokens();  // Draw players separately
-            }
-        });
-        
-        console.log("Board setup complete.")
-        return { ctx, canvas };
-    } catch (error) {
-         console.error("Critical error during board setup:", error);
-         return { ctx: null, canvas: null };
-    }
+    
+    console.log("Board setup complete.")
+    return { ctx, canvas };
 };
 
 

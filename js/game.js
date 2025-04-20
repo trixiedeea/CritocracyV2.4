@@ -3,13 +3,13 @@
 
 // ===== Imports =====
 import { 
-    drawBoard, 
-    startMoveAnimation,
+    // Only import what's needed from board.js
     setupBoard,
     highlightPlayerChoices,
-    highlightEndOfTurnCardBoxes,
     getNextStepOptions,
-    getPathColorFromCoords
+    getPathColorFromCoords,
+    startMoveAnimation,
+    highlightEndOfTurnCardBoxes
 } from './board.js';
 import { 
     START_SPACE,
@@ -39,7 +39,7 @@ import {
     useSpecialAbility
 } from './players.js';
 
-// Direct UI imports are necessary for prompts and direct feedback
+// Direct UI imports - don't import drawing functions
 import { 
     showEndGameScreen, 
     updatePlayerInfo, 
@@ -48,7 +48,6 @@ import {
     logMessage,
     clearMessages,
     hideDiceRollAnimation,
-    drawPlayers,
     highlightChoices,
     clearHighlights,
     showCardPopup,
@@ -120,7 +119,7 @@ export async function initializeGame(playerConfigs) {
     try {
         // Reset modules
         resetPlayers();
-        await setupBoard();
+        await setupBoard(); // Only sets up the tracking, doesn't draw visible elements
         await setupDecks();
 
         // Reset internal game state
@@ -218,8 +217,8 @@ export async function initializeGame(playerConfigs) {
 
         clearMessages();
         updatePlayerInfo();
-        drawBoard();
-        drawPlayers();
+        // Board and player visualization is handled by HTML
+        // No need to call drawBoard() or drawPlayers()
 
         prepareTurnForPlayer(getPlayerById(gameState.currentPlayerId));
         
