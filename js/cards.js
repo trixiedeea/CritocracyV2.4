@@ -5,7 +5,7 @@ import { PURPLE_CARDS, BLUE_CARDS, CYAN_CARDS, PINK_CARDS } from '../assets/Card
 import { updatePlayerResources } from './players.js';
 import { getPathColorFromCoords } from './board.js';
 import { PATH_COLORS } from './board-data.js';
-import { logMessage } from './logging.js';
+import { logMessage } from './ui.js';
 import ENDOFTURNCARDS from '../assets/Cards/Endofturncards.js';
 
 // ===== Constants =====

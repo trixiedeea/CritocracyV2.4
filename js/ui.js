@@ -188,31 +188,6 @@ function setupEventListeners() {
         });
     }
 
-    if (elements.playerConfig.playerCountConfirm) {
-        // Remove any existing event listeners
-        const newBtn = elements.playerConfig.playerCountConfirm.cloneNode(true);
-        elements.playerConfig.playerCountConfirm.parentNode.replaceChild(newBtn, elements.playerConfig.playerCountConfirm);
-        
-        addListener(newBtn, 'click', () => {
-            const totalPlayers = parseInt(elements.playerConfig.totalPlayerCount?.value || 0);
-            const humanPlayers = parseInt(elements.playerConfig.humanPlayerCount?.value || 0);
-            
-            // Validate player counts
-            if (totalPlayers < 2 || totalPlayers > 6) {
-                alert("Please select 2-6 total players.");
-                return;
-            }
-            
-            if (humanPlayers < 1 || humanPlayers > totalPlayers) {
-                alert(`Please select 1-${totalPlayers} human players.`);
-                return;
-            }
-            
-            setupRoleSelectionUI(totalPlayers, humanPlayers);
-            showScreen('role-selection-screen');
-        });
-    }
-
     if (elements.playerConfig.roleConfirm) {
         addListener(elements.playerConfig.roleConfirm, 'click', () => {
             startGameWithSelectedRoles();
@@ -346,9 +321,8 @@ export function setupPlayerCountUI() {
                 return;
             }
             
+            // Setup role selection UI and show the screen
             setupRoleSelectionUI(totalPlayers, humanPlayers);
-            
-            // Show the role selection screen
             showScreen('role-selection-screen');
         });
     }
