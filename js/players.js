@@ -514,6 +514,101 @@ export const getPlayerById = (playerId) => {
     return players.find(p => p.id === playerId) || null;
 };
 
+/**
+ * Check if a player is immune to a particular type of resource theft
+ * @param {object} player - The player to check
+ * @param {string} resourceType - The type of resource (money, knowledge, influence)
+ * @returns {boolean} - True if the player is immune to theft of this resource
+ */
+export function isImmuneToTheft(player, resourceType) {
+    if (!player || !resourceType) return false;
+    
+    // Check role-specific immunities
+    switch (player.role) {
+        case 'Politician':
+            // Politician is immune to money theft
+            if (resourceType.toLowerCase() === 'money') {
+                console.log(`${player.name} is immune to money theft as a Politician`);
+                return true;
+            }
+            break;
+            
+        case 'Historian':
+            // Historian is immune to knowledge theft
+            if (resourceType.toLowerCase() === 'knowledge') {
+                console.log(`${player.name} is immune to knowledge theft as a Historian`);
+                return true;
+            }
+            break;
+            
+        case 'Colonialist':
+            // Colonialist is immune to influence theft
+            if (resourceType.toLowerCase() === 'influence') {
+                console.log(`${player.name} is immune to influence theft as a Colonialist`);
+                return true;
+            }
+            break;
+    }
+    
+    return false;
+}
+
+/**
+ * Check if a player is immune to sabotage
+ * @param {object} player - The player to check
+ * @returns {boolean} - True if the player is immune to sabotage
+ */
+export function isImmuneToSabotage(player) {
+    if (!player) return false;
+    
+    // Check if player is a Revolutionary and has not used their sabotage immunity
+    if (player.role === 'Revolutionary' && !player.usedSabotageImmunity) {
+        // Mark the immunity as used
+        player.usedSabotageImmunity = true;
+        console.log(`${player.name} used their Revolutionary ability to ignore sabotage`);
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Check if a player can be forced to change paths
+ * @param {object} player - The player to check
+ * @returns {boolean} - True if the player can be forced to change paths
+ */
+export function canBeForcePathChange(player) {
+    if (!player) return true;
+    
+    // Artist cannot be forced to change paths
+    if (player.role === 'Artist') {
+        console.log(`${player.name} cannot be forced to change paths as an Artist`);
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Force a player to skip their next turn
+ * @param {object} player - The player to affect
+ * @returns {boolean} - True if successful, false if player is immune
+ */
+export function forceSkipTurn(player) {
+    if (!player) return false;
+    
+    // Entrepreneur never has to miss a turn
+    if (player.role === 'Entrepreneur') {
+        console.log(`${player.name} is immune to missing turns as an Entrepreneur`);
+        return false;
+    }
+    
+    // Set the skip turn flag
+    player.skipTurns = (player.skipTurns || 0) + 1;
+    console.log(`${player.name} will skip their next turn`);
+    return true;
+}
+
 // Move player - REMOVED UNUSED STUB
 /*
 export async function movePlayer(player, spaces) {

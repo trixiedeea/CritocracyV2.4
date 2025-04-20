@@ -289,7 +289,9 @@ export const applyEndOfTurnCardEffects = (card, player) => {
 };
 
 /**
- * Apply effects from a Special Event card
+ * Apply effects from a card to a player
+ * @param {Object} card - The card with effects to apply
+ * @param {Object} player - The player to apply effects to
  */
 export function applyCardEffects(card, player) {
     if (!card || !player) {
@@ -299,37 +301,84 @@ export function applyCardEffects(card, player) {
     
     console.log(`Applying effects of card ${card.name} to player ${player.name}`);
     
-    // Handle End of Turn cards (role-specific effects)
-    if (card.deckType === 'end_of_turn') {
-        // Get the effect specific to this player's role
-        const roleEffect = card.effects[player.role] || card.effects['ALL'];
-        
-        if (!roleEffect) {
-            console.log(`No effects found for ${player.role} in card ${card.name}`);
+    // Import player immunity functions
+    import('./players.js').then(players => {
+        // Helper function to apply effect with immunity check
+        const applyWithImmunityCheck = (effect) => {
+            let skipEffect = false;
+            
+            // Check for immunities based on effect type
+            if (effect.type === 'STEAL') {
+                // For resource theft, check immunity
+                if (effect.target === player.id && players.isImmuneToTheft(player, effect.resource)) {
+                    logMessage(`${player.name} is immune to ${effect.resource} theft!`);
+                    skipEffect = true;
+                }
+            }
+            else if (effect.type === 'SABOTAGE') {
+                // For sabotage, check Revolutionary immunity
+                if (effect.target === player.id && players.isImmuneToSabotage(player)) {
+                    logMessage(`${player.name} used Revolutionary ability to ignore sabotage!`);
+                    skipEffect = true;
+                }
+            }
+            else if (effect.type === 'FORCE_PATH_CHANGE') {
+                // For forced path change, check Artist immunity
+                if (!players.canBeForcePathChange(player)) {
+                    logMessage(`${player.name} cannot be forced to change paths as an Artist!`);
+                    skipEffect = true;
+                }
+            }
+            else if (effect.type === 'SKIP_TURN') {
+                // For skip turn, check Entrepreneur immunity
+                if (!players.forceSkipTurn(player)) {
+                    logMessage(`${player.name} never has to miss a turn as an Entrepreneur!`);
+                    skipEffect = true;
+                }
+            }
+            
+            // Apply the effect unless player is immune
+            if (!skipEffect) {
+                return applyEffect(effect, player);
+            }
+            
             return false;
+        };
+        
+        // Handle End of Turn cards (role-specific effects)
+        if (card.deckType === 'end_of_turn') {
+            // Get the effect specific to this player's role
+            const roleEffect = card.effects[player.role] || card.effects['ALL'];
+            
+            if (!roleEffect) {
+                console.log(`No effects found for ${player.role} in card ${card.name}`);
+                return false;
+            }
+            
+            // Apply the effect based on type with immunity check
+            return applyWithImmunityCheck(roleEffect);
         }
         
-        // Apply the effect based on type
-        applyEffect(roleEffect, player);
+        // Handle Special Event cards (array of effects)
+        if (Array.isArray(card.effects)) {
+            let appliedAny = false;
+            
+            // Apply each effect in the array with immunity checks
+            card.effects.forEach(effect => {
+                try {
+                    const success = applyWithImmunityCheck(effect);
+                    if (success) appliedAny = true;
+                } catch (error) {
+                    console.error(`Error applying card effect:`, error);
+                }
+            });
+            
+            return appliedAny;
+        }
         
-        return true;
-    }
-    
-    // Handle Special Event cards (array of effects)
-    if (Array.isArray(card.effects)) {
-        let appliedAny = false;
-        
-        // Apply each effect in the array
-        card.effects.forEach(effect => {
-            const success = applyEffect(effect, player);
-            if (success) appliedAny = true;
-        });
-        
-        return appliedAny;
-    }
-    
-    // If effects format is unknown, try as a single effect
-    return applyEffect(card.effects, player);
+        // If effects format is unknown, try as a single effect
+        return applyWithImmunityCheck(card.effects);
+    });
 }
 
 // Create an alias for compatibility with singular naming

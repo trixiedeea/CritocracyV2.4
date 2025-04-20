@@ -4,7 +4,6 @@ import {
     initializeUI, 
     showScreen, 
     setupPlayerCountUI,
-    setupRoleSelectionUI,
     hideCard,
     hideTargetSelection,
     safeResizeCanvas,
@@ -12,16 +11,15 @@ import {
     handleMessageAnimationEnd,
     handleCardAnimationEnd,
     handleBoardClick,
-    validatePlayerCounts
+    validatePlayerCounts,
+    logMessage
 } from './ui.js';
 
 import { 
-    setupBoard,
-    drawBoard
+    setupBoard
 } from './board.js';
 
 import { 
-    initGame,
     handleRoleConfirmation,
     handleDiceRoll,
     handleEndTurn,
@@ -76,6 +74,18 @@ function setupEventDelegation() {
         if (eventHandlers.click[id]) {
             eventHandlers.click[id](e);
         }
+        
+        // Special handling for role-confirm button to ensure game starts properly
+        if (id === 'role-confirm') {
+            const selectedRole = document.querySelector('.role-card.grid-item.selected');
+            if (!selectedRole) {
+                logMessage("Please select a role first!", "error");
+                return;
+            }
+            
+            console.log("Role confirmed, initializing game...");
+            handleRoleConfirmation();
+        }
     });
 
     // Handle change events
@@ -107,10 +117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed. Initializing Critocracy...");
 
     try {
-        // 1. Initialize Game Logic (Cards, Board spaces, Players)
-        const gameReady = await initGame();
-        if (!gameReady) {
-            throw new Error("Core game logic failed to initialize.");
+        // 1. Initialize UI (Setup screens, event listeners)
+        const uiReady = initializeUI();
+        if (!uiReady) {
+            throw new Error("UI failed to initialize.");
         }
 
         // 2. Initialize Board Module (Load images, set up canvas)
@@ -119,23 +129,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error("Board module failed to initialize (images/canvas).");
         }
 
-        // 3. Initialize UI (Setup screens, event listeners)
-        const uiReady = initializeUI();
-        if (!uiReady) {
-            throw new Error("UI failed to initialize.");
-        }
-
-        // 4. Set up the single event delegation system
+        // 3. Set up the single event delegation system
         setupEventDelegation();
 
-        // 5. Initial Board Draw (Needs canvas element to exist first)
-        const canvas = document.getElementById('board-canvas');
-        if (canvas) {
-            drawBoard(); // Perform the initial draw
-        } else {
-            console.error("Board canvas element not found! Cannot perform initial draw.");
-            throw new Error("Board canvas missing.");
-        }
+        // 4. Show the start screen - we'll initialize the game after player role selection
+        showScreen('start-screen');
         
         console.log("Critocracy initialization sequence complete. Ready for user interaction.");
         

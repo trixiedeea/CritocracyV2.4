@@ -605,15 +605,59 @@ export function resolvePlayerChoice(playerId, choice) {
                 player.currentPath = choice.pathColor || 'default';
                 gameState.turnState = 'ACTION_COMPLETE';
             } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
-                if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                    logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                    player.currentPath = choice.pathColor;
+                // For CPU players, follow rules from game outline:
+                // 1. Will not intentionally change paths unless forced
+                // 2. Will land on no more than 2 special event spaces in the game
+                if (!player.isHuman) {
+                    // For path changes, stick to current path if possible
+                    if (choice.pathColor && choice.pathColor !== player.currentPath) {
+                        // Initialize specialEventCount if not exists
+                        player.specialEventCount = player.specialEventCount || 0;
+                        
+                        // Check if this is a draw space
+                        const isDrawSpace = choice.type === 'draw';
+                        
+                        // CPU only changes path if:
+                        // 1. It's forced to change paths
+                        // 2. OR staying on current path would exceed special event limit
+                        const shouldChangePath = 
+                            player.forcedPathChange || 
+                            (isDrawSpace && player.specialEventCount >= 2 && 
+                             choice.pathColor !== player.currentPath);
+                        
+                        if (shouldChangePath) {
+                            logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
+                            player.currentPath = choice.pathColor;
+                            // Reset forced path change flag if it was set
+                            player.forcedPathChange = false;
+                        } else {
+                            // Try to find another choice that keeps current path
+                            const currentPathChoice = gameState.currentChoices.find(c => 
+                                c.pathColor === player.currentPath);
+                            
+                            if (currentPathChoice) {
+                                // Recursively resolve with the current path choice instead
+                                return resolvePlayerChoice(playerId, currentPathChoice);
+                            }
+                        }
+                    }
+                } else {
+                    // For human players, respect their choice
+                    if (choice.pathColor && choice.pathColor !== player.currentPath) {
+                        logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
+                        player.currentPath = choice.pathColor;
+                    }
                 }
                 
                 // Handle special event spaces
                 if (choice.type === 'draw') {
                     gameState.turnState = 'AWAITING_PATH_CARD';
                     logMessage(`${player.name} landed on a Draw space`);
+                    
+                    // For CPU players, track special event count
+                    if (!player.isHuman) {
+                        player.specialEventCount = (player.specialEventCount || 0) + 1;
+                    }
                     
                     // If human player, highlight the deck to draw from
                     if (player.isHuman) {
@@ -652,15 +696,58 @@ export function resolvePlayerChoice(playerId, choice) {
             player.currentPath = choice.pathColor || 'default';
             gameState.turnState = 'ACTION_COMPLETE';
         } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
-            if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                player.currentPath = choice.pathColor;
+            // Same logic for CPU vs human players as above
+            if (!player.isHuman) {
+                // For CPU players, follow the rules from the game outline
+                // Initialize specialEventCount if not exists
+                player.specialEventCount = player.specialEventCount || 0;
+                
+                // Check if this would change paths
+                if (choice.pathColor && choice.pathColor !== player.currentPath) {
+                    // For draw spaces, track special event count
+                    const isDrawSpace = choice.type === 'draw';
+                    
+                    // CPU only changes path if forced or to avoid exceeding special event limit
+                    const shouldChangePath = 
+                        player.forcedPathChange || 
+                        (isDrawSpace && player.specialEventCount >= 2 && 
+                         choice.pathColor !== player.currentPath);
+                    
+                    if (shouldChangePath) {
+                        logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
+                        player.currentPath = choice.pathColor;
+                        player.forcedPathChange = false;
+                    } else {
+                        // Try to find another choice that keeps current path
+                        const currentPathChoice = gameState.currentChoices.find(c => 
+                            c.pathColor === player.currentPath);
+                        
+                        if (currentPathChoice) {
+                            // Process with the current path choice instead
+                            coords.x = currentPathChoice.coordinates[0];
+                            coords.y = currentPathChoice.coordinates[1];
+                            player.coords = coords;
+                            choice = currentPathChoice;
+                        }
+                    }
+                }
+            } else {
+                // For human players, respect their choice
+                if (choice.pathColor && choice.pathColor !== player.currentPath) {
+                    logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
+                    player.currentPath = choice.pathColor;
+                }
             }
             
             // Handle special event spaces
             if (choice.type === 'draw') {
                 gameState.turnState = 'AWAITING_PATH_CARD';
                 logMessage(`${player.name} landed on a Draw space`);
+                
+                // For CPU players, track special event count
+                if (!player.isHuman) {
+                    player.specialEventCount = (player.specialEventCount || 0) + 1;
+                }
                 
                 // If human player, highlight the deck to draw from
                 if (player.isHuman) {
@@ -1021,18 +1108,27 @@ export function initiateTrade(sourcePlayer, targetPlayer, offerDetails, requestD
 }
 
 export function handleTradeResponse(accepted, sourcePlayerId, targetPlayerId, offerDetails, requestDetails, isSwap) {
+    const sourcePlayer = getPlayerById(sourcePlayerId);
+    const targetPlayer = getPlayerById(targetPlayerId);
+    
+    // According to game specs, CPU players always agree to anything offered by human players
+    if (targetPlayer && !targetPlayer.isHuman && sourcePlayer && sourcePlayer.isHuman) {
+        accepted = true;
+        logMessage(`${targetPlayer.name} (CPU) accepts the offer from ${sourcePlayer.name}.`);
+    }
+    
     gameState.tradePending = false;
     if (accepted) {
          if (!isSwap && !checkResourceAvailability(targetPlayerId, requestDetails)) {
-             logMessage(`${targetPlayerId} accepted but cannot afford. Trade cancelled.`);
+             logMessage(`${targetPlayer?.name || 'Target player'} accepted but cannot afford. Trade cancelled.`);
              gameState.turnState = 'ACTION_COMPLETE';
          } else {
-             logMessage(`Trade accepted between ${sourcePlayerId} and ${targetPlayerId}.`);
+             logMessage(`Trade accepted between ${sourcePlayer?.name || sourcePlayerId} and ${targetPlayer?.name || targetPlayerId}.`);
              executeTrade(sourcePlayerId, targetPlayerId, offerDetails, requestDetails, isSwap);
              gameState.turnState = 'ACTION_COMPLETE';
          }
     } else {
-         logMessage(`Trade rejected by ${targetPlayerId}.`);
+         logMessage(`Trade rejected by ${targetPlayer?.name || targetPlayerId}.`);
          gameState.turnState = 'ACTION_COMPLETE';
     }
      updatePlayerInfo();
@@ -1374,18 +1470,46 @@ export async function handleDiceRoll(playerId) {
 }
 
 export function handleRoleConfirmation() {
-    const selectedRoles = document.querySelectorAll('.role-selection-container .selected');
-    const playerConfigs = Array.from(selectedRoles).map(roleElement => {
-        return {
-            name: roleElement.dataset.playerName || 'Player',
-            role: roleElement.dataset.role,
-            isHuman: roleElement.dataset.isHuman === 'true'
-        };
+    // Query for selected roles from the role selection screen
+    const selectedRoleCard = document.querySelector('.role-card.grid-item.selected');
+    
+    if (!selectedRoleCard) {
+        console.error("No role card selected!");
+        return;
+    }
+    
+    const selectedRole = selectedRoleCard.querySelector('.role-select').getAttribute('data-role');
+    const humanPlayerName = "Player"; // This could be customized in a more advanced UI
+    
+    // Get total players and human player count from the selection screen
+    const totalPlayerCount = parseInt(document.getElementById('total-player-count').value) || 6;
+    const humanPlayerCount = parseInt(document.getElementById('human-player-count').value) || 1;
+    
+    console.log(`Role confirmation: ${selectedRole} selected with ${totalPlayerCount} total players (${humanPlayerCount} human)`);
+    
+    // Create player configurations array
+    const playerConfigs = [];
+    
+    // Add the human player with selected role
+    playerConfigs.push({
+        name: humanPlayerName,
+        role: selectedRole,
+        isHuman: true
     });
     
+    // Game will automatically assign roles to remaining CPU players in initializeGame
+    
     if (playerConfigs.length > 0) {
-        initializeGame(playerConfigs);
-        showScreen('game-board-screen');
+        console.log("Initializing game with player configurations:", playerConfigs);
+        const gameInitialized = initializeGame(playerConfigs);
+        
+        if (gameInitialized) {
+            showScreen('game-board-screen');
+        } else {
+            console.error("Failed to initialize game");
+        }
+    } else {
+        console.error("No player configurations created!");
     }
 }
 
