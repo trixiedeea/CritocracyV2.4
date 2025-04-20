@@ -181,7 +181,7 @@
         <div id="board-container" class="game-board-container">
             <canvas id="board-canvas"></canvas>
             <div id="ui-container">
-                <div id="player-info">
+                <div id="player-info-panel">
                     <h2>Current Player</h2>
                     <div id="current-player-name">-</div>
                     <div id="resources">
@@ -190,119 +190,161 @@
                         <div>Influence: <span id="resource-influence">0</span></div>
                     </div>
                 </div>
+                <div id="message-log"></div>
                 <div id="controls">
                     <button id="roll-dice-btn">Roll Dice</button>
                     <button id="end-turn-btn" disabled>End Turn</button>
+                    <button id="use-ability-btn" disabled>Use Ability</button>
                 </div>
             </div>
+        </div>
+        
+        <!-- Required popups -->
+        <div id="dice-display" class="popup" style="display: none;">
+            <div id="dice-face"></div>
+            <div id="dice-roll"></div>
+        </div>
+        
+        <div id="card-popup" class="popup" style="display: none;">
+            <h3 id="card-title">Card Title</h3>
+            <p id="card-description">Card description goes here.</p>
+            <div id="card-effects"></div>
+            <button id="show-card-details-btn">Show Details</button>
+            <button id="close-card-btn">Close</button>
+        </div>
+        
+        <div id="trade-prompt-modal" class="popup" style="display: none;">
+            <h3>Trade Offer</h3>
+            <p id="trade-prompt-details"></p>
+            <div id="trade-player-resources"></div>
+            <div class="trade-buttons">
+                <button id="trade-accept-btn">Accept</button>
+                <button id="trade-reject-btn">Reject</button>
+            </div>
+        </div>
+        
+        <div id="target-selection-modal" class="popup" style="display: none;">
+            <h3>Select Target</h3>
+            <p id="target-selection-description"></p>
+            <div id="target-player-list"></div>
+            <button id="cancel-target-btn">Cancel</button>
+        </div>
+    </div>
+    
+    <!-- End Game Screen -->
+    <div id="end-game-screen" class="screen">
+        <div id="end-game-container">
+            <h2>Game Over</h2>
+            <div id="winner-display"></div>
+            <div id="final-scores"></div>
+            <button id="new-game-btn">New Game</button>
         </div>
     </div>
 
     <script type="module" src="js/main.js"></script>
-</body>
 
-<!-- Game Scripts -->
-<!-- Use type="module" for all scripts to enable ES6 modules -->
-<script type="module" src="assets/Cards/Specialeventcards.js"></script>
-<script type="module" src="js/board-data.js"></script>
-<script type="module" src="js/logging.js"></script>
-<script type="module" src="js/players.js"></script>
-<script type="module" src="js/cards.js"></script>
-<script type="module" src="js/board.js"></script>
-<script type="module" src="js/animations.js"></script>
-<script type="module" src="js/ui.js"></script>
-<script type="module" src="js/game.js"></script>
-<script type="module">
-    // Import the showScreen function
-    import { showScreen } from './js/ui.js';
-    
-    // Fix for role selection buttons with specific focus on event capture
-    document.addEventListener('DOMContentLoaded', function() {
-        // Wait a short time to ensure all elements are fully rendered
-        setTimeout(function() {
-            // Fix role select buttons with proper event handling
-            const roleButtons = document.querySelectorAll('.role-select');
-            roleButtons.forEach(button => {
-                // Remove any existing event listeners
-                const newBtn = button.cloneNode(true);
-                button.parentNode.replaceChild(newBtn, button);
-                
-                // Add new event listener with capture and prevent bubbling
-                newBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
+    <!-- Game Scripts -->
+    <!-- Use type="module" for all scripts to enable ES6 modules -->
+    <script type="module" src="assets/Cards/Specialeventcards.js"></script>
+    <script type="module" src="js/board-data.js"></script>
+    <script type="module" src="js/logging.js"></script>
+    <script type="module" src="js/players.js"></script>
+    <script type="module" src="js/cards.js"></script>
+    <script type="module" src="js/board.js"></script>
+    <script type="module" src="js/animations.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/game.js"></script>
+    <script type="module">
+        // Import the showScreen function
+        import { showScreen } from './js/ui.js';
+        
+        // Fix for role selection buttons with specific focus on event capture
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a short time to ensure all elements are fully rendered
+            setTimeout(function() {
+                // Fix role select buttons with proper event handling
+                const roleButtons = document.querySelectorAll('.role-select');
+                roleButtons.forEach(button => {
+                    // Remove any existing event listeners
+                    const newBtn = button.cloneNode(true);
+                    button.parentNode.replaceChild(newBtn, button);
                     
-                    // Clear any previous selections
-                    document.querySelectorAll('.grid-item').forEach(item => {
-                        item.classList.remove('selected');
-                    });
-                    
-                    // Find this button's card and select it
-                    let parentCard = this.closest('.grid-item');
-                    parentCard.classList.add('selected');
-                    console.log('Role selected:', this.getAttribute('data-role'));
-                }, true); // Use capture phase
-            });
-            
-            // Also make entire cards clickable to improve UX
-            const roleCards = document.querySelectorAll('.grid-item');
-            roleCards.forEach(card => {
-                // Remove any existing handlers
-                const newCard = card.cloneNode(true);
-                card.parentNode.replaceChild(newCard, card);
-                
-                // Add click handler to the card
-                newCard.addEventListener('click', function(e) {
-                    // Only handle click if it's directly on the card (not on button)
-                    if (e.target.closest('.role-select')) {
-                        return; // Let the button handler deal with it
-                    }
-                    
-                    // Clear any previous selections
-                    document.querySelectorAll('.grid-item').forEach(item => {
-                        item.classList.remove('selected');
-                    });
-                    
-                    // Select this card
-                    this.classList.add('selected');
-                    console.log('Card selected:', this.querySelector('.role-select').getAttribute('data-role'));
+                    // Add new event listener with capture and prevent bubbling
+                    newBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        // Clear any previous selections
+                        document.querySelectorAll('.grid-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        
+                        // Find this button's card and select it
+                        let parentCard = this.closest('.grid-item');
+                        parentCard.classList.add('selected');
+                        console.log('Role selected:', this.getAttribute('data-role'));
+                    }, true); // Use capture phase
                 });
                 
-                // Re-add button handlers since we cloned the card
-                const button = newCard.querySelector('.role-select');
-                button.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
+                // Also make entire cards clickable to improve UX
+                const roleCards = document.querySelectorAll('.grid-item');
+                roleCards.forEach(card => {
+                    // Remove any existing handlers
+                    const newCard = card.cloneNode(true);
+                    card.parentNode.replaceChild(newCard, card);
                     
-                    // Clear any previous selections
-                    document.querySelectorAll('.grid-item').forEach(item => {
-                        item.classList.remove('selected');
+                    // Add click handler to the card
+                    newCard.addEventListener('click', function(e) {
+                        // Only handle click if it's directly on the card (not on button)
+                        if (e.target.closest('.role-select')) {
+                            return; // Let the button handler deal with it
+                        }
+                        
+                        // Clear any previous selections
+                        document.querySelectorAll('.grid-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        
+                        // Select this card
+                        this.classList.add('selected');
+                        console.log('Card selected:', this.querySelector('.role-select').getAttribute('data-role'));
                     });
                     
-                    // Find this button's card and select it
-                    let parentCard = this.closest('.grid-item');
-                    parentCard.classList.add('selected');
-                    console.log('Role selected:', this.getAttribute('data-role'));
-                }, true);
-            });
-            
-            // Fix confirm button
-            const confirmButton = document.getElementById('role-confirm');
-            if (confirmButton) {
-                confirmButton.addEventListener('click', function() {
-                    const selectedRole = document.querySelector('.grid-item.selected');
-                    if (!selectedRole) {
-                        alert('Please select a role first!');
-                        return;
-                    }
-                    const roleData = selectedRole.querySelector('.role-select').getAttribute('data-role');
-                    console.log('Confirmed role:', roleData);
-                    // Use the ui.js showScreen function to transition to turn order screen
-                    showScreen('turn-order-screen');
+                    // Re-add button handlers since we cloned the card
+                    const button = newCard.querySelector('.role-select');
+                    button.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        // Clear any previous selections
+                        document.querySelectorAll('.grid-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        
+                        // Find this button's card and select it
+                        let parentCard = this.closest('.grid-item');
+                        parentCard.classList.add('selected');
+                        console.log('Role selected:', this.getAttribute('data-role'));
+                    }, true);
                 });
-            }
-        }, 200); // Small delay to ensure elements are fully rendered
-    });
-</script>
+                
+                // Fix confirm button
+                const confirmButton = document.getElementById('role-confirm');
+                if (confirmButton) {
+                    confirmButton.addEventListener('click', function() {
+                        const selectedRole = document.querySelector('.grid-item.selected');
+                        if (!selectedRole) {
+                            alert('Please select a role first!');
+                            return;
+                        }
+                        const roleData = selectedRole.querySelector('.role-select').getAttribute('data-role');
+                        console.log('Confirmed role:', roleData);
+                        // Use the ui.js showScreen function to transition to turn order screen
+                        showScreen('turn-order-screen');
+                    });
+                }
+            }, 200); // Small delay to ensure elements are fully rendered
+        });
+    </script>
 </body>
 </html> 
