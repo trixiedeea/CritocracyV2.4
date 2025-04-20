@@ -13,6 +13,7 @@ import {
 } from './board.js';
 import { 
     START_SPACE,
+    FINISH_SPACE,
     PATH_COLORS
 } from './board-data.js';
 import { 
@@ -727,7 +728,9 @@ function handleEndOfMove(playerId, moveResult) {
         const spaceType = moveResult.spaceDetails.type?.toLowerCase();
         
         // If player reached the finish space
-        if (spaceType === 'finish') {
+        if (spaceType === 'finish' || 
+            (player.coords[0] === FINISH_SPACE.coordinates[0] && 
+             player.coords[1] === FINISH_SPACE.coordinates[1])) {
             logMessage(`${player.name} has reached the finish!`);
             markPlayerFinished(playerId);
             
