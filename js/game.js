@@ -109,32 +109,8 @@ export function getGameState() {
  * @param {number} steps - Number of steps to move
  * @returns {Promise<boolean>} - True if move was processed successfully
  */
-// async function processPlayerMove(player, target = null, steps) {
-//     if (!player || steps < 1) {
-//         console.error('Cannot move player: Invalid player or steps');
-//         return false;
-//     }
-//
-//     let possibleMoves = getPossibleMoves(player, steps);
-//
-//     if (possibleMoves.length === 1) {
-//         // Automatically choose the only possible position
-//         const targetPosition = possibleMoves[0];
-//         // Use direct animation instead of recursion
-//         await animatePlayerMovement(player, player.currentCoords, targetPosition);
-//         player.currentCoords = targetPosition;
-//         handleEndOfMove(player.id, { spaceDetails: findSpaceDetailsByCoords(targetPosition) });
-//     } else if (possibleMoves.length > 1) {
-//         // Present choices to the player
-//         presentJunctionChoices(player.id, possibleMoves);
-//     } else {
-//         // No valid moves - end the turn
-//         logMessage(`${player.name} has no valid moves`, 'error');
-//         gameState.turnState = 'ACTION_COMPLETE';
-//     }
-//     
-//     return true;
-// }
+
+
 
 export async function initializeGame(playerConfigs) {
     console.log("Initializing game...");
@@ -532,7 +508,7 @@ export function resolveBoardClick(coords) {
     }
 
     const currentState = gameState.turnState;
-    if (!['AWAITING_START_CHOICE', 'AWAITING_JUNCTION_CHOICE'].includes(currentState)) {
+    if (!['AWAITING_START_CHOICE', 'AWAITING_CHOICEPOINT'].includes(currentState)) {
          console.log("resolveBoardClick ignored: Not waiting for board choice.");
          return;
     }
@@ -583,7 +559,7 @@ export function resolvePlayerChoice(playerId, choice) {
     
     // Only process choices when in appropriate states
     if (gameState.turnState !== 'AWAITING_START_CHOICE' && 
-        gameState.turnState !== 'AWAITING_JUNCTION_CHOICE') {
+        gameState.turnState !== 'AWAITING_CHOICEPOINT') {
         console.error(`Cannot resolve choice: Invalid game state ${gameState.turnState}`);
         return false;
     }
@@ -624,22 +600,19 @@ export function resolvePlayerChoice(playerId, choice) {
                 // If this was the initial path choice, update player's path
                 player.currentPath = choice.pathColor || 'default';
                 gameState.turnState = 'ACTION_COMPLETE';
-            } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
-                // If this was a junction choice, update path if changed
+            } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
                 if (choice.pathColor && choice.pathColor !== player.currentPath) {
                     logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
                     player.currentPath = choice.pathColor;
                 }
                 
-                // If the space is a special event space, handle drawing the appropriate card
+                // Handle special event spaces
                 if (choice.type === 'draw') {
-                    // Draw card from deck matching the path color
                     gameState.turnState = 'AWAITING_PATH_CARD';
                     logMessage(`${player.name} landed on a Draw space`);
                     
                     // If human player, highlight the deck to draw from
                     if (player.isHuman) {
-                        // Highlight the appropriate deck
                         const deckColor = choice.pathColor || player.currentPath;
                         if (typeof highlightDeck === 'function') {
                             highlightDeck(deckColor);
@@ -674,7 +647,7 @@ export function resolvePlayerChoice(playerId, choice) {
         if (gameState.turnState === 'AWAITING_START_CHOICE') {
             player.currentPath = choice.pathColor || 'default';
             gameState.turnState = 'ACTION_COMPLETE';
-        } else if (gameState.turnState === 'AWAITING_JUNCTION_CHOICE') {
+        } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
             if (choice.pathColor && choice.pathColor !== player.currentPath) {
                 logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
                 player.currentPath = choice.pathColor;
@@ -798,7 +771,7 @@ function handleEndOfMove(playerId, moveResult) {
             });
             
             // Update game state to indicate we're waiting for a choice
-            gameState.turnState = 'AWAITING_CHOICE';
+            gameState.turnState = 'AWAITING_CHOICEPOINT';
             gameState.currentChoices = moveResult.options || [];
             
             // If it's a CPU player, automatically choose
@@ -1280,7 +1253,7 @@ export function handleChoicePoint(playerId, options) {
     }
     
     // Update game state to indicate we're waiting for a choice
-    gameState.turnState = 'AWAITING_CHOICE';
+    gameState.turnState = 'AWAITING_CHOICEPOINT';
     gameState.currentChoices = options;
     
     // If it's a CPU player, automatically choose
