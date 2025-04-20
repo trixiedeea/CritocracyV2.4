@@ -6,7 +6,7 @@ import { updatePlayerResources } from './players.js';
 import { getPathColorFromCoords } from './board.js';
 import { PATH_COLORS } from './board-data.js';
 import { logMessage } from './ui.js';
-import ENDOFTURNCARDS from '../assets/Cards/Endofturncards.js';
+import formattedEndOfTurnCards from '../assets/Cards/Endofturncards.js';
 
 // ===== Constants =====
 // These deck types correspond to the path colors defined in board-data.js
@@ -93,7 +93,7 @@ const populateDecks = () => {
     cardDecks[DECK_TYPES.PINK] = [...PINK_CARDS].map(card => ({ ...card, deckType: DECK_TYPES.PINK }));
     
     // End of turn deck
-    cardDecks[DECK_TYPES.END_OF_TURN] = [...ENDOFTURNCARDS].map(card => ({ ...card, deckType: DECK_TYPES.END_OF_TURN }));
+    cardDecks[DECK_TYPES.END_OF_TURN] = [...formattedEndOfTurnCards].map(card => ({ ...card, deckType: DECK_TYPES.END_OF_TURN }));
 };
 
 // ===== Deck Management Functions =====
