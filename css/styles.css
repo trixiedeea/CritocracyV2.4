@@ -48,6 +48,19 @@ html, body {
 /* Start Screen */
 #start-screen {
     background-image: url('../assets/Critocracy.jpg');
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.start-content {
+    text-align: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    margin: 2rem;
 }
 
 #start-screen h1 {
@@ -64,13 +77,15 @@ html, body {
     color: white;
     border: none;
     border-radius: 8px;
-    margin-top: 2rem;
     cursor: pointer;
     transition: transform 0.2s;
+    display: block;
+    margin: 0 auto;
 }
 
 #start-game-btn:hover {
     transform: scale(1.05);
+    background-color: #45a049;
 }
 
 /* Player Count Screen */
