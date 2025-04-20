@@ -272,6 +272,7 @@ function setupEventListeners() {
 
 // --- Setup Player Count UI ---
 export function setupPlayerCountUI() {
+    console.log("Setting up player count UI");
     const totalPlayerCountElement = document.getElementById('total-player-count');
     const humanPlayerCountElement = document.getElementById('human-player-count');
     const playerCountConfirmBtn = document.getElementById('player-count-confirm');
@@ -302,6 +303,7 @@ export function setupPlayerCountUI() {
         playerCountConfirmBtn.parentNode.replaceChild(newBtn, playerCountConfirmBtn);
         
         newBtn.addEventListener('click', () => {
+            console.log("Player count confirm button clicked");
             const totalPlayers = 6; // Fixed at 6
             const humanPlayers = parseInt(humanPlayerCountElement.value, 10) || 1;
             
@@ -311,9 +313,15 @@ export function setupPlayerCountUI() {
                 return;
             }
             
-            // Setup role selection UI and show the screen
+            console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
+            
+            // Setup role selection UI first
             setupRoleSelectionUI(totalPlayers, humanPlayers);
-            showScreen('role-selection-screen');
+            
+            // Then transition to the role selection screen
+            requestAnimationFrame(() => {
+                showScreen('role-selection-screen');
+            });
         });
     }
 }
@@ -646,6 +654,7 @@ function handleCanvasClick(event) {
 
 // --- Screen Management (Updated) ---
 export function showScreen(screenId) {
+    console.log(`Attempting to show screen: ${screenId}`);
     const targetScreen = document.getElementById(screenId);
     if (!targetScreen) {
         console.error(`Screen with ID "${screenId}" not found`);
@@ -654,23 +663,14 @@ export function showScreen(screenId) {
 
     // Hide all screens first
     document.querySelectorAll('.screen').forEach(screen => {
-        // Remove visible class
-        screen.classList.remove('visible');
-        // Add hidden class
-        screen.classList.add('hidden');
-        // Also set display none for screens using that method
-        screen.style.display = 'none';
+        screen.classList.remove('active');
     });
     
     // Show the target screen
-    targetScreen.classList.remove('hidden');
-    targetScreen.classList.add('visible');
-    targetScreen.style.display = '';
+    targetScreen.classList.add('active');
     
-    // If this is the game screen, update game components
-    if (screenId === 'game-board-screen') {
-        updateGameComponents();
-    }
+    // Log screen transition
+    console.log(`Transitioned to screen: ${screenId}`);
 }
 
 /**
@@ -684,8 +684,7 @@ export function hideScreen(screenId) {
         return;
     }
     
-    // Hide the screen
-    screen.style.display = 'none';
+    // Hide the screen using CSS class
     screen.classList.remove('active');
     
     console.log(`Hidden screen: ${screenId}`);

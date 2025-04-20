@@ -233,6 +233,9 @@ export async function initializeGame(playerConfigs) {
     }
 }
 
+// Add alias export for backward compatibility
+export { initializeGame as initGame };
+
 // ===== Turn Management =====
 
 /**
