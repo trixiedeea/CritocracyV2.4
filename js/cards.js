@@ -6,7 +6,7 @@ import { updatePlayerResources } from './players.js';
 import { getPathColorFromCoords } from './board.js';
 import { PATH_COLORS } from './board-data.js';
 import { logMessage } from './logging.js';
-import { ENDOFTURNCARDS } from '../assets/Cards/Endofturncards.js';
+import ENDOFTURNCARDS from '../assets/Cards/Endofturncards.js';
 
 // ===== Constants =====
 // These deck types correspond to the path colors defined in board-data.js

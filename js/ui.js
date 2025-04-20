@@ -2,7 +2,8 @@ import {
     initializeGame, // For starting game from setup UI
     handlePlayerAction, // For Roll, End Turn, Ability buttons
     getGameState, // For checking current state in UI
-    resolvePlayerChoice // For handling validated clicks on choices
+    resolvePlayerChoice, // For handling validated clicks on choices
+    resolveBoardClick // For handling board clicks
 } from './game.js';
 
 // Player Data Imports
@@ -95,95 +96,191 @@ const PLAYER_TOKEN_RADIUS = 10;
 let tradeResponseCallback = null;
 let targetSelectionCallback = null;
 
+// ===== Container Dimensions =====
+const CONTAINER_DIMENSIONS = {
+    roleSelection: { width: 1200, height: 800 },
+    playerInfo: { width: 300, height: 800 },
+    messageLog: { width: 300, height: 400 },
+    cardPopup: { width: 400, height: 600 },
+    tradePrompt: { width: 500, height: 400 },
+    targetSelection: { width: 500, height: 400 },
+    endGame: { width: 800, height: 600 }
+};
+
 // --- Initialization ---
 export function initializeUI() {
+    console.log("Initializing UI...");
+    
+    // Check for required elements
     if (!elements.gameBoard.boardCanvas) {
-        console.error("UI Init Error: Canvas element not found!");
-        return false;
+        console.error("Board canvas not found");
+        return;
     }
+    
+    // Initialize canvas context
     elements.gameBoard.ctx = elements.gameBoard.boardCanvas.getContext('2d');
-    setupEventListeners();
-    showScreen('start-screen');
-    console.log("UI Initialized.");
-    
-    // Don't call initializeBoard() here as main.js already calls setupBoard()
-    // Instead, ensure board-related UI functions are ready once the board is set up
-    if (window.boardState && window.boardState.isInitialized) {
-        console.log("Board is already initialized, setting up board UI components");
-        setupBoardUIComponents();
-    } else {
-        console.log("Board not yet initialized, will set up UI components when ready");
-        // We can add a listener to wait for board initialization if needed
-        window.addEventListener('boardInitialized', setupBoardUIComponents);
+    if (!elements.gameBoard.ctx) {
+        console.error("Could not get canvas context");
+        return;
     }
+
+    // Scale all containers
+    Object.entries(elements.screens).forEach(([key, element]) => {
+        if (element && CONTAINER_DIMENSIONS[key]) {
+            scaleUIContainer(element, CONTAINER_DIMENSIONS[key]);
+        }
+    });
+
+    // Scale popups
+    Object.entries(elements.popups).forEach(([key, element]) => {
+        if (element && CONTAINER_DIMENSIONS[key]) {
+            scaleUIContainer(element, CONTAINER_DIMENSIONS[key]);
+        }
+    });
+
+    // Scale game board elements
+    if (elements.gameBoard.playerInfoPanel) {
+        scaleUIContainer(elements.gameBoard.playerInfoPanel, CONTAINER_DIMENSIONS.playerInfo);
+    }
+    if (elements.gameBoard.messageLog) {
+        scaleUIContainer(elements.gameBoard.messageLog, CONTAINER_DIMENSIONS.messageLog);
+    }
+
+    // Add resize listener
+    window.addEventListener('resize', () => {
+        safeResizeCanvas();
+        updateGameComponents();
+    });
+
+    // Setup event listeners
+    setupEventListeners();
     
-    return true;
+    // Show initial screen
+    showScreen('start-screen');
+    
+    console.log("UI Initialized successfully");
 }
 
 // --- Event Handlers Setup ---
 function setupEventListeners() {
     console.log("Setting up UI event listeners...");
 
+    // Helper function to safely add event listeners
+    const addListener = (element, event, handler) => {
+        if (!element) {
+            console.warn(`Cannot add ${event} listener: Element not found`);
+            return;
+        }
+        try {
+            element.addEventListener(event, handler);
+            console.log(`Added ${event} listener to ${element.id || 'unnamed element'}`);
+        } catch (error) {
+            console.error(`Error adding ${event} listener:`, error);
+        }
+    };
+
     // --- Setup Screens ---
-    elements.playerConfig.initialStartBtn?.addEventListener('click', () => {
-        console.log("Start button clicked - transitioning to player count screen");
-        setupPlayerCountUI();
-        showScreen('player-count-screen');
-    });
-    
-    elements.playerConfig.playerCountConfirm?.addEventListener('click', () => {
-        const totalPlayers = parseInt(elements.playerConfig.totalPlayerCount.value);
-        const humanPlayers = parseInt(elements.playerConfig.humanPlayerCount.value);
-        
-        setupRoleSelectionUI(totalPlayers, humanPlayers);
-        showScreen('role-selection-screen');
-    });
-    
-    elements.playerConfig.roleConfirm?.addEventListener('click', () => {
-        startGameWithSelectedRoles();
-    });
-    
+    if (elements.playerConfig.initialStartBtn) {
+        addListener(elements.playerConfig.initialStartBtn, 'click', () => {
+            console.log("Start button clicked - transitioning to player count screen");
+            setupPlayerCountUI();
+            showScreen('player-count-screen');
+        });
+    }
+
+    if (elements.playerConfig.playerCountConfirm) {
+        addListener(elements.playerConfig.playerCountConfirm, 'click', () => {
+            const totalPlayers = parseInt(elements.playerConfig.totalPlayerCount?.value || 0);
+            const humanPlayers = parseInt(elements.playerConfig.humanPlayerCount?.value || 0);
+            
+            if (totalPlayers > 0 && humanPlayers >= 0) {
+                setupRoleSelectionUI(totalPlayers, humanPlayers);
+                showScreen('role-selection-screen');
+            } else {
+                console.error("Invalid player counts");
+            }
+        });
+    }
+
+    if (elements.playerConfig.roleConfirm) {
+        addListener(elements.playerConfig.roleConfirm, 'click', () => {
+            startGameWithSelectedRoles();
+        });
+    }
+
     // --- Game Board --- 
-    elements.gameBoard.boardCanvas?.addEventListener('click', handleCanvasClick);
-    elements.gameBoard.rollDiceBtn?.addEventListener('click', () => {
-        const playerId = getGameState().currentPlayerId;
-        if (playerId) handlePlayerAction(playerId, 'ROLL_DICE');
-    });
-    elements.gameBoard.endTurnBtn?.addEventListener('click', () => {
-        const playerId = getGameState().currentPlayerId;
-        if (playerId) handlePlayerAction(playerId, 'END_TURN');
-    });
-    elements.gameBoard.useAbilityBtn?.addEventListener('click', () => {
-         const playerId = getGameState().currentPlayerId;
-         if (playerId) handlePlayerAction(playerId, 'USE_ABILITY');
-    });
+    if (elements.gameBoard.boardCanvas) {
+        addListener(elements.gameBoard.boardCanvas, 'click', handleCanvasClick);
+    }
+
+    if (elements.gameBoard.rollDiceBtn) {
+        addListener(elements.gameBoard.rollDiceBtn, 'click', () => {
+            const gameState = getGameState();
+            if (gameState?.currentPlayerId) {
+                handlePlayerAction(gameState.currentPlayerId, 'ROLL_DICE');
+            }
+        });
+    }
+
+    if (elements.gameBoard.endTurnBtn) {
+        addListener(elements.gameBoard.endTurnBtn, 'click', () => {
+            const gameState = getGameState();
+            if (gameState?.currentPlayerId) {
+                handlePlayerAction(gameState.currentPlayerId, 'END_TURN');
+            }
+        });
+    }
+
+    if (elements.gameBoard.useAbilityBtn) {
+        addListener(elements.gameBoard.useAbilityBtn, 'click', () => {
+            const gameState = getGameState();
+            if (gameState?.currentPlayerId) {
+                handlePlayerAction(gameState.currentPlayerId, 'USE_ABILITY');
+            }
+        });
+    }
 
     // --- Popups ---
-    elements.popups.closeCardBtn?.addEventListener('click', hideCard);
-    elements.popups.showExplanationBtn?.addEventListener('click', () => {
-        if (elements.popups.cardRoleExplanation) elements.popups.cardRoleExplanation.style.display = 'block';
-        if (elements.popups.showExplanationBtn) elements.popups.showExplanationBtn.style.display = 'none';
-    });
-    elements.popups.tradeAccept?.addEventListener('click', () => {
-        if (tradeResponseCallback) tradeResponseCallback(true);
-        if (elements.popups.trade) elements.popups.trade.style.display = 'none';
-        tradeResponseCallback = null; 
-    });
-    elements.popups.tradeReject?.addEventListener('click', () => {
-        if (tradeResponseCallback) tradeResponseCallback(false);
-        if (elements.popups.trade) elements.popups.trade.style.display = 'none';
-        tradeResponseCallback = null; 
-    });
-    
-    // Target Selection Modal
-    elements.popups.cancelTargetBtn?.addEventListener('click', () => {
-        if (targetSelectionCallback) targetSelectionCallback(null);
-        if (elements.popups.targetSelection) elements.popups.targetSelection.style.display = 'none';
-        targetSelectionCallback = null;
-    });
-    
-    // --- End Game ---
-    elements.endGame.newGameBtn?.addEventListener('click', () => window.location.reload()); 
+    if (elements.popups.closeCardBtn) {
+        addListener(elements.popups.closeCardBtn, 'click', hideCard);
+    }
+
+    if (elements.popups.showExplanationBtn) {
+        addListener(elements.popups.showExplanationBtn, 'click', () => {
+            if (elements.popups.cardRoleExplanation) {
+                elements.popups.cardRoleExplanation.style.display = 'block';
+            }
+            if (elements.popups.showExplanationBtn) {
+                elements.popups.showExplanationBtn.style.display = 'none';
+            }
+        });
+    }
+
+    if (elements.popups.tradeAccept) {
+        addListener(elements.popups.tradeAccept, 'click', () => {
+            if (tradeResponseCallback) {
+                tradeResponseCallback(true);
+            }
+            if (elements.popups.trade) {
+                elements.popups.trade.style.display = 'none';
+            }
+            tradeResponseCallback = null;
+        });
+    }
+
+    if (elements.popups.tradeReject) {
+        addListener(elements.popups.tradeReject, 'click', () => {
+            if (tradeResponseCallback) {
+                tradeResponseCallback(false);
+            }
+            if (elements.popups.trade) {
+                elements.popups.trade.style.display = 'none';
+            }
+            tradeResponseCallback = null;
+        });
+    }
+
+    console.log("Event listeners setup complete");
 }
 
 // --- Setup Player Count UI ---
@@ -1065,6 +1162,20 @@ export function animateTurnTransition(fromPlayer, toPlayer) {
 
 // --- Card Display (New) ---
 export function showCardPopup(card, callback) {
+    if (!elements.popups.cardPopup) return;
+    
+    // Scale the popup
+    scaleUIContainer(elements.popups.cardPopup, CONTAINER_DIMENSIONS.cardPopup);
+    
+    // Scale the content
+    const titleSize = scaleUIValue(24);
+    const descriptionSize = scaleUIValue(16);
+    const padding = scaleUIValue(20);
+    
+    elements.popups.cardTitle.style.fontSize = `${titleSize}px`;
+    elements.popups.cardDescription.style.fontSize = `${descriptionSize}px`;
+    elements.popups.cardPopup.style.padding = `${padding}px`;
+    
     const cardPopup = document.getElementById('card-popup');
     const cardTitle = document.getElementById('card-title');
     const cardDescription = document.getElementById('card-description');
@@ -1251,10 +1362,20 @@ export function formatEffect(effect) {
 
 // --- Trade Prompt (Update element access) ---
 export function promptForTradeResponse(sourcePlayer, targetPlayer, offerDetails, requestDetails, isSwap, callback) {
-    if (!elements.popups.trade) {
-        console.error('Trade popup element not found');
-        return;
-    }
+    if (!elements.popups.trade) return;
+    
+    // Scale the trade prompt
+    scaleUIContainer(elements.popups.trade, CONTAINER_DIMENSIONS.tradePrompt);
+    
+    // Scale the content
+    const textSize = scaleUIValue(16);
+    const buttonSize = scaleUIValue(14);
+    const padding = scaleUIValue(20);
+    
+    elements.popups.tradePromptText.style.fontSize = `${textSize}px`;
+    elements.popups.tradeAccept.style.fontSize = `${buttonSize}px`;
+    elements.popups.tradeReject.style.fontSize = `${buttonSize}px`;
+    elements.popups.trade.style.padding = `${padding}px`;
     
     // Store the callback for later use
     tradeResponseCallback = callback;
@@ -1309,10 +1430,19 @@ export function promptForTradeResponse(sourcePlayer, targetPlayer, offerDetails,
  * @param {function} callback - Function to call with the selected target, or null if canceled.
  */
 export function promptTargetSelection(sourcePlayer, possibleTargets, description, callback) {
-    if (!elements.popups.targetSelection) {
-        console.error('Target selection modal not found');
-        return;
-    }
+    if (!elements.popups.targetSelection) return;
+    
+    // Scale the target selection modal
+    scaleUIContainer(elements.popups.targetSelection, CONTAINER_DIMENSIONS.targetSelection);
+    
+    // Scale the content
+    const textSize = scaleUIValue(16);
+    const buttonSize = scaleUIValue(14);
+    const padding = scaleUIValue(20);
+    
+    elements.popups.targetDescription.style.fontSize = `${textSize}px`;
+    elements.popups.cancelTargetBtn.style.fontSize = `${buttonSize}px`;
+    elements.popups.targetSelection.style.padding = `${padding}px`;
     
     // Store the callback for later use
     targetSelectionCallback = callback;
@@ -1635,13 +1765,20 @@ export function highlightActivePlayer(playerId) {
  * Test if the resizeCanvas function is available and call it if so
  * This function provides a safe wrapper to call resizeCanvas
  */
-function safeResizeCanvas() {
-    // Import resizeCanvas from board.js directly
-    try {
-        resizeCanvas();
-    } catch (e) {
-        console.warn('Error calling resizeCanvas:', e);
-    }
+export function safeResizeCanvas() {
+    const canvas = document.getElementById('board-canvas');
+    if (!canvas) return;
+    
+    const container = canvas.parentElement;
+    if (!container) return;
+    
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    
+    drawBoard();
 }
 
 /**
@@ -2967,41 +3104,6 @@ export function drawAllPlayerTokens() {
     });
 }
 
-// Add resizeCanvas function
-function resizeCanvas() {
-    const canvas = elements.gameBoard.boardCanvas;
-    if (!canvas) return;
-    
-    const container = canvas.parentElement;
-    if (!container) return;
-    
-    // Set canvas size to match container while maintaining aspect ratio
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    const aspectRatio = 1536 / 1024; // Original board dimensions
-    
-    let width, height;
-    if (containerWidth / containerHeight > aspectRatio) {
-        height = containerHeight;
-        width = height * aspectRatio;
-    } else {
-        width = containerWidth;
-        height = width / aspectRatio;
-    }
-    
-    canvas.width = width;
-    canvas.height = height;
-    
-    // Update board scale
-    if (window.boardState) {
-        window.boardState.scale = width / 1536;
-    }
-    
-    // Redraw board
-    drawBoard();
-    drawPlayers();
-}
-
 // Add setupBoardUIComponents function
 function setupBoardUIComponents() {
     // This function will be called once the board is initialized
@@ -3197,5 +3299,93 @@ function addColoredDeckStyles() {
         }
     `;
     document.head.appendChild(styles);
+}
+
+// ===== UI Scaling Utilities =====
+const ORIGINAL_UI_WIDTH = 1536;
+const ORIGINAL_UI_HEIGHT = 1024;
+
+/**
+ * Scales a value based on the current container size relative to original dimensions
+ * @param {number} value - The value to scale
+ * @param {string} dimension - 'width' or 'height'
+ * @returns {number} - The scaled value
+ */
+export function scaleUIValue(value, dimension = 'width') {
+    const container = elements.gameBoard.boardCanvas?.parentElement;
+    if (!container) return value;
+    
+    const scale = dimension === 'width' 
+        ? container.clientWidth / ORIGINAL_UI_WIDTH
+        : container.clientHeight / ORIGINAL_UI_HEIGHT;
+    
+    return value * scale;
+}
+
+/**
+ * Scales a container element to maintain proportions relative to original dimensions
+ * @param {HTMLElement} element - The element to scale
+ * @param {Object} originalDimensions - Original width and height
+ */
+export function scaleUIContainer(element, originalDimensions) {
+    if (!element || !originalDimensions) return;
+    
+    const container = elements.gameBoard.boardCanvas?.parentElement;
+    if (!container) return;
+    
+    const scaleX = container.clientWidth / ORIGINAL_UI_WIDTH;
+    const scaleY = container.clientHeight / ORIGINAL_UI_HEIGHT;
+    const scale = Math.min(scaleX, scaleY);
+    
+    element.style.width = `${originalDimensions.width * scale}px`;
+    element.style.height = `${originalDimensions.height * scale}px`;
+    element.style.fontSize = `${scaleUIValue(16)}px`; // Base font size
+}
+
+export function handleMessageAnimationEnd(e) {
+    const messageDiv = e.target;
+    if (messageDiv.classList.contains('fade-out')) {
+        messageDiv.remove();
+    }
+}
+
+export function handleCardAnimationEnd(e) {
+    const cardElement = e.target;
+    if (cardElement.classList.contains('flip-out')) {
+        cardElement.remove();
+    }
+}
+
+export function handleBoardClick(e) {
+    const canvas = e.target;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const coords = unscaleCoordinates(x, y);
+    resolveBoardClick(coords);
+}
+
+export function validatePlayerCounts(e) {
+    const totalPlayers = parseInt(document.getElementById('total-player-count')?.value || 0);
+    const humanPlayers = parseInt(document.getElementById('human-player-count')?.value || 0);
+    
+    if (humanPlayers > totalPlayers) {
+        e.target.value = totalPlayers;
+    }
+    
+    if (totalPlayers < 2) {
+        document.getElementById('total-player-count').value = 2;
+    }
+    
+    if (humanPlayers < 0) {
+        document.getElementById('human-player-count').value = 0;
+    }
+}
+
+export function hideTargetSelection() {
+    const targetSelectionModal = document.getElementById('target-selection-modal');
+    if (targetSelectionModal) {
+        targetSelectionModal.style.display = 'none';
+    }
 }
 

@@ -1,12 +1,114 @@
 // Main entry point for Critocracy game
 
-import { initializeUI, showScreen, setupPlayerCountUI } from './ui.js';
+import { 
+    initializeUI, 
+    showScreen, 
+    setupPlayerCountUI,
+    setupRoleSelectionUI,
+    hideCard,
+    hideTargetSelection,
+    safeResizeCanvas,
+    updateGameComponents,
+    handleMessageAnimationEnd,
+    handleCardAnimationEnd,
+    handleBoardClick,
+    validatePlayerCounts
+} from './ui.js';
+
 import { 
     setupBoard,
     drawBoard
 } from './board.js';
-import { initGame } from './game.js';
+
+import { 
+    initGame,
+    handleRoleConfirmation,
+    handleDiceRoll,
+    handleEndTurn,
+    handleAbilityUse,
+    handleNewGame,
+    handleTradeResponse
+} from './game.js';
+
 import './animations.js'; // Import animations module
+
+// Global event handler map
+const eventHandlers = {
+    'click': {
+        'start-game-btn': () => {
+            console.log("Start button clicked - going to player count screen");
+            setupPlayerCountUI();
+            showScreen('player-count-screen');
+        },
+        'player-count-confirm': () => {
+            const totalPlayers = parseInt(document.getElementById('total-player-count')?.value || 0);
+            const humanPlayers = parseInt(document.getElementById('human-player-count')?.value || 0);
+            if (totalPlayers > 0 && humanPlayers >= 0) {
+                setupRoleSelectionUI(totalPlayers, humanPlayers);
+                showScreen('role-selection-screen');
+            }
+        },
+        'role-confirm': () => handleRoleConfirmation(),
+        'roll-dice-btn': () => handleDiceRoll(),
+        'end-turn-btn': () => handleEndTurn(),
+        'use-ability-btn': () => handleAbilityUse(),
+        'close-card-btn': () => hideCard(),
+        'new-game-btn': () => handleNewGame(),
+        'trade-accept-btn': () => handleTradeResponse(true),
+        'trade-reject-btn': () => handleTradeResponse(false),
+        'cancel-target-btn': () => hideTargetSelection(),
+        'board-canvas': (e) => handleBoardClick(e)
+    },
+    'change': {
+        'total-player-count': (e) => validatePlayerCounts(e),
+        'human-player-count': (e) => validatePlayerCounts(e)
+    },
+    'resize': {
+        'window': () => {
+            safeResizeCanvas();
+            updateGameComponents();
+        }
+    },
+    'animationend': {
+        'message': (e) => handleMessageAnimationEnd(e),
+        'card': (e) => handleCardAnimationEnd(e)
+    }
+};
+
+// Single event listener setup
+function setupEventDelegation() {
+    // Handle click events
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        const id = target.id;
+        if (eventHandlers.click[id]) {
+            eventHandlers.click[id](e);
+        }
+    });
+
+    // Handle change events
+    document.addEventListener('change', (e) => {
+        const target = e.target;
+        const id = target.id;
+        if (eventHandlers.change[id]) {
+            eventHandlers.change[id](e);
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        eventHandlers.resize.window();
+    });
+
+    // Handle animation end events
+    document.addEventListener('animationend', (e) => {
+        const target = e.target;
+        const type = target.dataset.animationType;
+        if (eventHandlers.animationend[type]) {
+            eventHandlers.animationend[type](e);
+        }
+    });
+}
 
 // Initialize the game when the DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -31,7 +133,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error("UI failed to initialize.");
         }
 
-        // 4. Initial Board Draw (Needs canvas element to exist first)
+        // 4. Set up the single event delegation system
+        setupEventDelegation();
+
+        // 5. Initial Board Draw (Needs canvas element to exist first)
         const canvas = document.getElementById('board-canvas');
         if (canvas) {
             drawBoard(); // Perform the initial draw
@@ -41,31 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         console.log("Critocracy initialization sequence complete. Ready for user interaction.");
-        
-        // Define the function to show player count screen
-        function showPlayerCountScreen() {
-            console.log("Showing player count screen...");
-            
-            // Set up player count UI
-            setupPlayerCountUI();
-            
-            // Use the showScreen function to handle the transition
-            showScreen('player-count-screen');
-        }
-        
-        // Set up the button for manual transition
-        const startGameBtn = document.getElementById('start-game-btn');
-        if (startGameBtn) {
-            // Remove existing event listeners
-            const newStartBtn = startGameBtn.cloneNode(true);
-            startGameBtn.parentNode.replaceChild(newStartBtn, startGameBtn);
-            
-            // Add our new event listener for manual transition
-            newStartBtn.addEventListener('click', () => {
-                console.log("Start button clicked - going to player count screen");
-                showPlayerCountScreen();
-            });
-        }
         
     } catch (error) {
         console.error("CRITICAL ERROR during game initialization:", error);

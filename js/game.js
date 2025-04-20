@@ -53,7 +53,8 @@ import {
     showCardPopup,
     updateGameComponents,
     animatePlayerMovement,
-    highlightDeck
+    highlightDeck,
+    showScreen
 } from './ui.js';
 
 // Import logging system
@@ -1401,4 +1402,38 @@ export async function handleDiceRoll(playerId) {
     updateGameComponents();
     
     return true;
+}
+
+export function handleRoleConfirmation() {
+    const selectedRoles = document.querySelectorAll('.role-selection-container .selected');
+    const playerConfigs = Array.from(selectedRoles).map(roleElement => {
+        return {
+            name: roleElement.dataset.playerName || 'Player',
+            role: roleElement.dataset.role,
+            isHuman: roleElement.dataset.isHuman === 'true'
+        };
+    });
+    
+    if (playerConfigs.length > 0) {
+        initializeGame(playerConfigs);
+        showScreen('game-board-screen');
+    }
+}
+
+export function handleEndTurn() {
+    const currentPlayerId = gameState.currentPlayerId;
+    if (currentPlayerId) {
+        handlePlayerAction(currentPlayerId, 'END_TURN');
+    }
+}
+
+export function handleAbilityUse() {
+    const currentPlayerId = gameState.currentPlayerId;
+    if (currentPlayerId) {
+        handlePlayerAction(currentPlayerId, 'USE_ABILITY');
+    }
+}
+
+export function handleNewGame() {
+    window.location.reload();
 }

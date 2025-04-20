@@ -38,7 +38,7 @@ export const createEnvironmentalCard = (name, description, effects) => (
 );
 
 // Array of end-of-turn card definitions
-const ENDOFTURNCARDS = [
+export const ENDOFTURNCARDS = [
     createHistoricalSpacesCard(
         "The Reclamation of Historical Spaces",
         "Historical sites and artifacts are reclaimed by formerly colonized peoples. Césaire argues for the importance of reclaiming cultural heritage, while Benjamin notes how this disrupts the 'continuum of history' constructed by the victors.",
