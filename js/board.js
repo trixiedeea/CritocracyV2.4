@@ -30,6 +30,7 @@ let boardState = {
     container: null, // Add container reference
     playerTokenImages: {}, 
     boardImage: null,
+    players: [],
     isInitialized: false // Track initialization state
 };
 
@@ -118,11 +119,13 @@ export const drawPlayerToken = (player) => {
 export const drawAllPlayerTokens = () => {
     if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
     
-    // Clear the canvas
-    boardState.ctx.clearRect(0, 0, boardState.canvas.width, boardState.canvas.height);
+    // Don't clear the canvas or redraw the board here to avoid circular reference
     
-    // Draw the board
-    drawBoard();
+    // Check if players array exists
+    if (!boardState.players || !Array.isArray(boardState.players)) {
+        console.warn("No players array found in boardState");
+        return;
+    }
     
     // Draw all player tokens
     boardState.players.forEach(player => {
@@ -869,6 +872,8 @@ export const drawBoard = () => {
     const ctx = boardState.ctx;
     const canvas = boardState.canvas;
     const boardImage = boardState.boardImage;
+    
+    // Clear canvas and draw the board image
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     try {
         ctx.drawImage(boardImage, 0, 0, canvas.width, canvas.height);
@@ -880,12 +885,15 @@ export const drawBoard = () => {
         ctx.fillText("Error drawing board", canvas.width / 2, canvas.height / 2);
         return;
     }
+    
+    // Draw path elements
     drawPathConnections(); 
-    drawPathSpaces();      
-    drawAllPlayerTokens(); 
+    drawPathSpaces();
+    
+    // IMPORTANT: We do NOT call drawAllPlayerTokens() here
+    // It must be called separately after drawBoard() to avoid circular reference
     
     // Check if we need to highlight End of Turn card boxes
-    // Import the game state directly to avoid circular dependencies
     try {
         // Get the current game state from the window object to avoid circular imports
         if (window.gameState && window.gameState.turnState === 'AWAITING_END_OF_TURN_CARD') {
@@ -949,15 +957,31 @@ export const setupBoard = async () => {
         await Promise.all([imageLoadPromise, tokenPromise]);
         console.log("Image and tokens loaded/attempted.");
         boardState.isInitialized = true;
+        
+        // Get the latest player list
+        boardState.players = getPlayers();
+        
+        // Resize the canvas
         resizeCanvas(); 
-        drawBoard();    
-        setupBoardClickListener(canvas); // Call it HERE, after canvas exists
+        
+        // Draw board and players separately to avoid circular reference
+        drawBoard();  // Draw the board first
+        drawAllPlayerTokens();  // Then draw players on top
+            
+        setupBoardClickListener(canvas);
+        
         window.addEventListener('resize', () => {
             if (boardState.isInitialized) {
+                // Update player list before redrawing
+                boardState.players = getPlayers();
+                
+                // Resize and redraw - keeping these separate to avoid circular reference
                 resizeCanvas(); 
-                drawBoard();    
+                drawBoard();  // Draw the board
+                drawAllPlayerTokens();  // Draw players separately
             }
         });
+        
         console.log("Board setup complete.")
         return { ctx, canvas };
     } catch (error) {
@@ -1518,4 +1542,11 @@ export function highlightPlayerChoices(choices) {
         // Draw the highlight
         drawPathHighlight(ctx, choice.coordinates, highlightColor, 20);
     });
+}
+
+// Export a function to update the players in boardState
+export function updateBoardPlayers(players) {
+    if (Array.isArray(players)) {
+        boardState.players = players;
+    }
 }

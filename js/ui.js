@@ -313,7 +313,6 @@ export function setupPlayerCountUI() {
                 alert("Please select 1-6 human players.");
                 return;
             }
-            
             console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
             
             // Setup role selection UI first
@@ -357,12 +356,16 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             <div class="role-selection-player">
                 <h3>Human Player ${playerNumber}</h3>
                 <div class="role-options">
-                    ${availableRoles.map(role => `
+                    ${availableRoles.map(role => {
+                        // Safely get token path or use a default
+                        const tokenPath = PLAYER_ROLES[role].token || 'default.png';
+                        return `
                         <div class="role-card" data-player="${i}" data-role="${role}">
                             <div class="role-card-inner">
                                 <h4>${PLAYER_ROLES[role].name}</h4>
                                 <div class="role-image">
-                                    <img src="assets/roles/${PLAYER_ROLES[role].image}" alt="${PLAYER_ROLES[role].name}">
+                                    <img src="assets/tokens/${tokenPath}" alt="${PLAYER_ROLES[role].name}" 
+                                         onerror="this.onerror=null; this.src='assets/tokens/default.png';">
                                 </div>
                                 <p>${PLAYER_ROLES[role].description}</p>
                                 <div class="role-stats">
@@ -372,7 +375,8 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
