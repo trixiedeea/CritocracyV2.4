@@ -347,11 +347,11 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         }
         
         // Setup the role selection click handlers
-        const cards = roleSelectionContainer.querySelectorAll('.role-card, .grid-item');
-        cards.forEach(card => {
+        const roleCards = roleSelectionContainer.querySelectorAll('.role-card');
+        roleCards.forEach(card => {
             card.addEventListener('click', () => {
                 // Deselect all cards
-                cards.forEach(c => c.classList.remove('selected'));
+                roleCards.forEach(c => c.classList.remove('selected'));
                 
                 // Select the clicked card
                 card.classList.add('selected');
@@ -433,10 +433,10 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
     const availableRoles = Object.keys(PLAYER_ROLES);
     
     // Create role selection cards
-    let roleCards = '';
+    let roleCardsHtml = '';
     for (let i = 0; i < humanPlayers; i++) {
         const playerNumber = i + 1;
-        roleCards += `
+        roleCardsHtml += `
             <div class="role-selection-player">
                 <h3>Human Player ${playerNumber}</h3>
                 <div class="role-options">
@@ -469,7 +469,7 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
     // Add AI player message for remaining slots
     const aiPlayerCount = totalPlayers - humanPlayers;
     if (aiPlayerCount > 0) {
-        roleCards += `
+        roleCardsHtml += `
             <div class="ai-players-info">
                 <h3>${aiPlayerCount} AI Players</h3>
                 <p>AI players will be assigned random roles from those not selected.</p>
@@ -479,11 +479,11 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
 
     // Remove the grid-container class for multi-player selection
     roleSelectionContainer.classList.remove('grid-container');
-    roleSelectionContainer.innerHTML = roleCards;
+    roleSelectionContainer.innerHTML = roleCardsHtml;
     
     // Add click event listeners to role cards
-    const cards = roleSelectionContainer.querySelectorAll('.role-card');
-    cards.forEach(card => {
+    const roleCards = roleSelectionContainer.querySelectorAll('.role-card');
+    roleCards.forEach(card => {
         card.addEventListener('click', () => {
             const playerId = card.getAttribute('data-player');
             const playerRoleCards = document.querySelectorAll(`.role-card[data-player="${playerId}"]`);
