@@ -113,7 +113,7 @@ body {
 }
 
 .visible {
-    display: block !important;
+    display: block;
 }
 
 /* Button styles */
@@ -224,7 +224,7 @@ select, input[type="text"] {
 
 /* Grid container for role selection */
 .grid-container {
-    display: grid;
+    display: grid !important;
     grid-template-rows: repeat(auto-fit, minmax(250px, 1fr));
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
@@ -286,7 +286,7 @@ select, input[type="text"] {
     font-weight: 600;
 }
 
-.role-card-image, .card-image, .token-image {
+.role-card-image, .token-image {
     text-align: right;
     flex-shrink: 0;
     margin-left: 10px;

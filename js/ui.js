@@ -763,14 +763,33 @@ export function showScreen(screenId) {
     // Hide all screens first
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
+        // Ensure proper hiding for all screens
+        if (!screen.classList.contains('hidden')) {
+            screen.classList.add('hidden');
+        }
     });
     
-    // Show the target screen - remove both hidden class and add active
+    // Show the target screen with proper class handling
     targetScreen.classList.remove('hidden');
-    targetScreen.classList.add('active');
     
-    // Log screen transition
-    console.log(`Transitioned to screen: ${screenId}`);
+    // Use setTimeout to ensure the browser has time to process the removal of the hidden class
+    setTimeout(() => {
+        targetScreen.classList.add('active');
+        
+        // For role selection screen, ensure the container is visible
+        if (screenId === 'role-selection-screen') {
+            const container = document.getElementById('role-selection-container');
+            if (container) {
+                container.style.display = 'grid';
+                if (!container.classList.contains('grid-container')) {
+                    container.classList.add('grid-container');
+                }
+            }
+        }
+        
+        // Log screen transition
+        console.log(`Transitioned to screen: ${screenId}`);
+    }, 50);
 }
 
 /**
