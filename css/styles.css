@@ -222,6 +222,20 @@ select, input[type="text"] {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
 
+/* Role Selection Screen specific handling */
+#role-selection-screen.active #role-selection-container {
+    display: grid !important;
+    grid-template-rows: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+}
+
 /* Grid container for role selection */
 .grid-container {
     display: grid !important;
