@@ -972,8 +972,8 @@ export function hideCard() {
         
         // Don't hide card-additional-details for player role cards
         // Instead of checking if role selection screen is active, we'll look for role card elements
-        const isRoleCardView = document.querySelector('.role-card.selected, .grid-item.selected') !== null;
-        
+        const isRoleCardView = document.querySelector('.role-card, .grid-item') !== null;
+
         // Only hide additional details if we're not viewing role cards
         if (detailsElement && !isRoleCardView) {
             detailsElement.style.display = 'none';
