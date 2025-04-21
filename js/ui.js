@@ -976,7 +976,7 @@ export function hideCard() {
 
         // Only hide additional details if we're not viewing role cards
         if (detailsElement && !isRoleCardView) {
-            detailsElement.style.display = 'none';
+            detailsElement.style.display = 'active';
         }
         
         // Force role cards to be visible
