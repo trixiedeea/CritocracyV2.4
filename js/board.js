@@ -18,7 +18,6 @@ import {
 const deckRegions = [];
 
 // ===== Board Constants =====
-const BOARD_IMAGE_PATH = 'assets/board.png';
 const TOKEN_DIR = 'assets/tokens'; 
 const TOKEN_SIZE = 30; // Base size in original board pixels
 
@@ -117,8 +116,8 @@ export const drawPlayerToken = (player) => {
  * Draws all player tokens based on their current coordinates.
  */
 export const drawAllPlayerTokens = () => {
-    // Player tokens are already handled by HTML
-    // A.png for Artist, P.png for Politician, C.png for Colonialist, etc.
+    // This function is used in the codebase but doesn't need to do anything
+    // since player tokens are already handled by HTML
     return;
 };
 
@@ -154,11 +153,11 @@ const drawPathSpaces = () => {
         }
     };
     
-    const drawScaledPolygon = (polygonCoords, fillColor, strokeColor = 'rgba(0,0,0,0)') => {
+    const drawScaledPolygon = (polygonCoords, fillColor = 'rgba(0, 0, 0, 0)', strokeColor = 'rgba(0, 0, 0, 0)') => {
          if (!Array.isArray(polygonCoords) || polygonCoords.length < 3) return;
          // Make polygons transparent - only used for tracking
-         ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-         ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
+         ctx.fillStyle = fillColor;
+         ctx.strokeStyle = strokeColor;
          ctx.lineWidth = 1;
          ctx.beginPath();
          const [startX, startY] = scaleCoordinates(polygonCoords[0][0], polygonCoords[0][1]);
@@ -179,6 +178,7 @@ const drawPathSpaces = () => {
         drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
     }
 
+    // Draw spaces for tracking purposes (invisible)
     for (const path of allPaths) {
         if (!path || !path.segments) continue;
         
@@ -831,9 +831,66 @@ function hexToRgb(hex) {
 export const drawBoard = () => {
     if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
     
-    // Draw only the path spaces - no board image or tokens
-    // Board image is already loaded via HTML as /assets/board.png
-    drawPathSpaces();
+    const ctx = boardState.ctx;
+    const scale = boardState.scale;
+    const allPaths = [AgeOfExpansion, AgeOfResistance, AgeOfReckoning, AgeOfLegacy];
+    const drawnCoords = new Set(); 
+
+    const drawScaledPoint = (x, y, color, radius = 3) => {
+        const [scaledX, scaledY] = scaleCoordinates(x, y);
+        const scaledRadius = Math.max(1, radius * scale); 
+        const coordKey = `${scaledX.toFixed(1)},${scaledY.toFixed(1)}`; 
+        if (!drawnCoords.has(coordKey)) {
+            // Make everything completely transparent - only used for tracking
+            ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+            ctx.beginPath();
+            ctx.arc(scaledX, scaledY, scaledRadius, 0, Math.PI * 2); 
+            ctx.fill();
+            drawnCoords.add(coordKey);
+        }
+    };
+    
+    const drawScaledPolygon = (polygonCoords, fillColor = 'rgba(0, 0, 0, 0)', strokeColor = 'rgba(0, 0, 0, 0)') => {
+         if (!Array.isArray(polygonCoords) || polygonCoords.length < 3) return;
+         // Make polygons transparent - only used for tracking
+         ctx.fillStyle = fillColor;
+         ctx.strokeStyle = strokeColor;
+         ctx.lineWidth = 1;
+         ctx.beginPath();
+         const [startX, startY] = scaleCoordinates(polygonCoords[0][0], polygonCoords[0][1]);
+         ctx.moveTo(startX, startY);
+         for (let i = 1; i < polygonCoords.length; i++) {
+             const [lineX, lineY] = scaleCoordinates(polygonCoords[i][0], polygonCoords[i][1]);
+             ctx.lineTo(lineX, lineY);
+         }
+         ctx.closePath();
+         ctx.fill();
+    };
+
+    // Draw spaces for tracking purposes (invisible)
+    if (START_SPACE?.coordinates?.[0]) {
+        drawScaledPoint(START_SPACE.coordinates[0][0], START_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    }
+    if (FINISH_SPACE?.coordinates?.[0]) {
+        drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    }
+
+    // Draw spaces for tracking purposes (invisible)
+    for (const path of allPaths) {
+        if (!path || !path.segments) continue;
+        
+        // Draw each segment in the path (invisible)
+        for (const space of path.segments) {
+            if (!space || !space.coordinates) continue;
+            
+            if ((space.Type === 'choicepoint' || space.Type === 'junction') && 
+                Array.isArray(space.coordinates) && space.coordinates.length >= 3) {
+                drawScaledPolygon(space.coordinates, 'rgba(0, 0, 0, 0)'); 
+            } else if (Array.isArray(space.coordinates) && space.coordinates[0]) {
+                drawScaledPoint(space.coordinates[0][0], space.coordinates[0][1], 'rgba(0, 0, 0, 0)', 4); 
+            }
+        }
+    }
 };
 
 /**
@@ -866,7 +923,10 @@ export const setupBoard = async () => {
     boardState.canvas = canvas;
     boardState.ctx = ctx;
     
-    // Set as initialized - don't need to load board image, it's in HTML
+    // Load token images (this is used for animating token movements)
+    await loadTokenImages();
+    
+    // Set as initialized
     boardState.isInitialized = true;
     
     // Set player list
@@ -875,7 +935,7 @@ export const setupBoard = async () => {
     // Resize the canvas
     resizeCanvas(); 
     
-    // Just draw the spaces (invisibly, for tracking)
+    // Draw the board with the merged function
     drawBoard();
         
     setupBoardClickListener(canvas);
@@ -1333,8 +1393,9 @@ export function highlightEndOfTurnCardBoxes(ctx) {
  * Highlights the appropriate deck based on path color
  * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
  * @param {string} pathColor - The color of the path
+ * @export Used by the highlightPlayerChoices function and in game logic
  */
-function highlightDeck(ctx, pathColor) {
+export function highlightDeck(ctx, pathColor) {
     const deckAreas = {
         purple: { x: 116, y: 443, width: 70, height: 100 },
         blue: { x: 836, y: 178, width: 70, height: 100 },
@@ -1351,13 +1412,19 @@ function highlightDeck(ctx, pathColor) {
     const now = Date.now();
     const pulseOpacity = 0.3 + Math.sin(now / 200) * 0.2;
     
+    // Use PATH_COLORS from board-data.js if available
     let highlightColor;
-    switch (pathColor) {
-        case 'purple': highlightColor = '#9C54DE'; break;
-        case 'blue': highlightColor = '#1B3DE5'; break;
-        case 'cyan': highlightColor = '#00FFFF'; break;
-        case 'pink': highlightColor = '#FF66FF'; break;
-        default: highlightColor = '#FFFF00';
+    if (PATH_COLORS && PATH_COLORS[pathColor]) {
+        highlightColor = PATH_COLORS[pathColor];
+    } else {
+        // Fallback colors
+        switch (pathColor) {
+            case 'purple': highlightColor = '#9C54DE'; break;
+            case 'blue': highlightColor = '#1B3DE5'; break;
+            case 'cyan': highlightColor = '#00FFFF'; break;
+            case 'pink': highlightColor = '#FF66FF'; break;
+            default: highlightColor = '#FFFF00';
+        }
     }
     
     ctx.fillStyle = `rgba(${hexToRgb(highlightColor)}, ${pulseOpacity})`;
