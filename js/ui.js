@@ -3306,4 +3306,3 @@ export function hideTargetSelection() {
         targetSelectionModal.style.display = 'none';
     }
 }
-
