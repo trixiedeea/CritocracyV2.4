@@ -974,7 +974,7 @@ export function hideCard() {
         
         // Reset any additional elements
         const detailsElement = document.getElementById('card-additional-details');
-        if (detailsElement) {
+        if (detailsElement && !document.getElementById('role-selection-screen').classList.contains('active')) {
             detailsElement.style.display = 'none';
         }
         
