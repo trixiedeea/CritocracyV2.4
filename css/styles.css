@@ -580,6 +580,12 @@ select, input[type="text"] {
     #board-container {
         height: 60vh;
     }
+
+    @media (max-width: 768px) {
+        .grid-container {
+            grid-template-columns: 1fr;  /* 1 column */
+        }
+    }    
     
     #player-info-panel {
         width: 250px;
