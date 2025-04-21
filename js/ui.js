@@ -347,7 +347,7 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         }
         
         // Setup the role selection click handlers
-        const roleCards = roleSelectionContainer.querySelectorAll('.role-card');
+        const roleCards = roleSelectionContainer.querySelectorAll('.role-card, .grid-item');
         roleCards.forEach(card => {
             card.addEventListener('click', () => {
                 // Deselect all cards
