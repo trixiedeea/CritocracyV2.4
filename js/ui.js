@@ -386,10 +386,10 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 // Create player configurations
                 const playerConfigs = [];
                 
-                // Add human player with selected role
+                // Add human player with selected role - Convert to uppercase to match the system expectation
                 playerConfigs.push({
                     name: "Player 1", 
-                    role: selectedRole,
+                    role: selectedRole.toUpperCase(),
                     isHuman: true
                 });
                 
@@ -974,11 +974,13 @@ export function hideCard() {
         
         // Reset any additional elements
         const detailsElement = document.getElementById('card-additional-details');
-        const roleSelectionActive = document.getElementById('role-selection-screen')?.classList.contains('active');
         
-        // Only hide additional details if we're not in the role selection screen
-        // This prevents hiding details for player role cards
-        if (detailsElement && !roleSelectionActive) {
+        // Don't hide card-additional-details for player role cards
+        // Instead of checking if role selection screen is active, we'll look for role card elements
+        const isRoleCardView = document.querySelector('.role-card.selected, .grid-item.selected') !== null;
+        
+        // Only hide additional details if we're not viewing role cards
+        if (detailsElement && !isRoleCardView) {
             detailsElement.style.display = 'none';
         }
         

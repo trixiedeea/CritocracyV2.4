@@ -60,7 +60,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="artist">Select</button>
+                    <button class="role-select" data-role="ARTIST">Select</button>
                 </div>
             </div>
 
@@ -79,7 +79,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="historian">Select</button>
+                    <button class="role-select" data-role="HISTORIAN">Select</button>
                 </div>
             </div>
 
@@ -98,7 +98,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="colonialist">Select</button>
+                    <button class="role-select" data-role="COLONIALIST">Select</button>
                 </div>
             </div>
 
@@ -117,7 +117,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="revolutionary">Select</button>
+                    <button class="role-select" data-role="REVOLUTIONARY">Select</button>
                 </div>
             </div>
 
@@ -136,7 +136,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="politician">Select</button>
+                    <button class="role-select" data-role="POLITICIAN">Select</button>
                 </div>
             </div>
 
@@ -155,7 +155,7 @@
                     </div>
                 </div>
                 <div class="role-card-footer">
-                    <button class="role-select" data-role="entrepreneur">Select</button>
+                    <button class="role-select" data-role="ENTREPRENEUR">Select</button>
                 </div>
             </div>
         </div>
@@ -335,10 +335,29 @@
                             alert('Please select a role first!');
                             return;
                         }
+                        
                         const roleData = selectedRole.querySelector('.role-select').getAttribute('data-role');
                         console.log('Confirmed role:', roleData);
-                        // Use the ui.js showScreen function to transition to turn order screen
-                        showScreen('turn-order-screen');
+                        
+                        // Import required functions
+                        import('./js/game.js').then(gameModule => {
+                            // Create player configurations with the selected role
+                            const playerConfigs = [{
+                                name: "Player 1", 
+                                role: roleData,
+                                isHuman: true
+                            }];
+                            
+                            // Initialize the game with the player configuration
+                            gameModule.initializeGame(playerConfigs).then(success => {
+                                if (success) {
+                                    // Show game board screen if initialization successful
+                                    showScreen('game-board-screen');
+                                } else {
+                                    alert("Failed to start the game. Please try again.");
+                                }
+                            });
+                        });
                     });
                 }
             }, 200); // Small delay to ensure elements are fully rendered
