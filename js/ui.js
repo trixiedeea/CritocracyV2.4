@@ -767,10 +767,12 @@ export function showScreen(screenId) {
         if (!screen.classList.contains('hidden')) {
             screen.classList.add('hidden');
         }
+        screen.style.display = 'none'; // Explicitly set display none
     });
     
     // Show the target screen with proper class handling
     targetScreen.classList.remove('hidden');
+    targetScreen.style.display = 'flex'; // Explicitly set display flex
     
     // Use setTimeout to ensure the browser has time to process the removal of the hidden class
     setTimeout(() => {
@@ -780,6 +782,7 @@ export function showScreen(screenId) {
         if (screenId === 'role-selection-screen') {
             // Force role cards to be visible
             forceRoleCardsVisible();
+            console.log("Role selection screen should now be visible with display:", getComputedStyle(targetScreen).display);
         }
         
         // Log screen transition
@@ -3312,28 +3315,34 @@ export function hideTargetSelection() {
  * This is a brute-force approach to ensure role cards are always visible
  */
 export function forceRoleCardsVisible() {
-    // Make all role card grid items visible
-    const roleCards = document.querySelectorAll('.role-card, .grid-item');
-    roleCards.forEach(card => {
-        card.style.display = '';
-        card.style.visibility = 'visible';
-        card.style.opacity = '1';
-    });
+    // Make the role selection screen visible if it's active
+    const roleScreen = document.getElementById('role-selection-screen');
+    if (roleScreen && roleScreen.classList.contains('active')) {
+        roleScreen.style.display = 'flex';
+        roleScreen.style.opacity = '1';
+        roleScreen.classList.remove('hidden');
+    }
     
-    // Make sure the container is visible
+    // Make sure the container is visible with !important
     const container = document.getElementById('role-selection-container');
     if (container) {
-        container.style.display = 'grid';
+        container.style.cssText = "display: grid !important; opacity: 1 !important; visibility: visible !important;";
         if (!container.classList.contains('grid-container')) {
             container.classList.add('grid-container');
         }
     }
     
+    // Make all role card grid items visible with !important
+    const roleCards = document.querySelectorAll('.role-card, .grid-item');
+    roleCards.forEach(card => {
+        card.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
+    });
+    
     // Force any card-additional-details to be visible during role selection
     if (document.getElementById('role-selection-screen')?.classList.contains('active')) {
         const details = document.getElementById('card-additional-details');
         if (details) {
-            details.style.display = 'block';
+            details.style.cssText = "display: block !important; visibility: visible !important; opacity: 1 !important;";
         }
     }
 }
