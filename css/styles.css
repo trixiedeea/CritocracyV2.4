@@ -109,11 +109,11 @@ body {
 }
 
 .hidden {
-    display: none !important;
+    display: none
 }
 
 .visible {
-    display: block;
+    display: flex;
 }
 
 /* Button styles */
