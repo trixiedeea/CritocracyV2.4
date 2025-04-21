@@ -274,61 +274,156 @@ function setupEventListeners() {
 // --- Setup Player Count UI ---
 export function setupPlayerCountUI() {
     console.log("Setting up player count UI");
+    
+    // Get elements
     const totalPlayerCountElement = document.getElementById('total-player-count');
     const humanPlayerCountElement = document.getElementById('human-player-count');
     const playerCountConfirmBtn = document.getElementById('player-count-confirm');
     
-    if (!totalPlayerCountElement || !humanPlayerCountElement || !playerCountConfirmBtn) {
-        console.error("Required player count UI elements not found");
+    if (!totalPlayerCountElement || !humanPlayerCountElement) {
+        console.error("Player count elements not found");
         return;
     }
     
-    // Set total players to fixed 6 and disable the selector
-    totalPlayerCountElement.value = '6';
-    totalPlayerCountElement.disabled = true;
+    // Set total players to 6 (fixed)
+    totalPlayerCountElement.textContent = '6';
     
-    // Clear and populate human player count options (1-6)
-    humanPlayerCountElement.innerHTML = '';
-    for (let i = 1; i <= 6; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = i;
-        if (i === 1) option.selected = true;
-        humanPlayerCountElement.appendChild(option);
+    // Populate human player options
+    if (humanPlayerCountElement) {
+        // Clear existing options
+        humanPlayerCountElement.innerHTML = '';
+        
+        // Add options for 1-6 human players
+        for (let i = 1; i <= 6; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            
+            // Default to 1 human player
+            if (i === 1) {
+                option.selected = true;
+            }
+            
+            humanPlayerCountElement.appendChild(option);
+        }
+
+        // Add change listener to update player name fields
+        humanPlayerCountElement.addEventListener('change', () => {
+            updatePlayerNameFields(parseInt(humanPlayerCountElement.value, 10));
+        });
+        
+        // Initialize player name fields for default selection (1 player)
+        updatePlayerNameFields(1);
     }
     
     // Update handler for player count confirmation
     if (playerCountConfirmBtn) {
-        // Remove any existing event listeners
+        console.log("Setting up player count confirm button");
+        
+        // Remove any existing event listeners by replacing the button
         const newBtn = playerCountConfirmBtn.cloneNode(true);
         playerCountConfirmBtn.parentNode.replaceChild(newBtn, playerCountConfirmBtn);
         
-        newBtn.addEventListener('click', () => {
+        // Direct click handling with debugging
+        newBtn.onclick = function() {
             console.log("Player count confirm button clicked");
             const totalPlayers = 6; // Fixed at 6
             const humanPlayers = parseInt(humanPlayerCountElement.value, 10) || 1;
             
-            // Validate
+            // Validate human player count
             if (humanPlayers < 1 || humanPlayers > 6) {
                 alert("Please select 1-6 human players.");
                 return;
             }
-            console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
             
-            // Setup role selection UI first
-            setupRoleSelectionUI(totalPlayers, humanPlayers);
+            // Validate player names
+            const playerNames = [];
+            let missingNames = false;
             
-            // Then transition to the role selection screen
-            requestAnimationFrame(() => {
+            for (let i = 1; i <= humanPlayers; i++) {
+                const nameInput = document.getElementById(`player-name-${i}`);
+                const playerName = nameInput ? nameInput.value.trim() : '';
+                
+                if (!playerName) {
+                    missingNames = true;
+                }
+                
+                playerNames.push(playerName || `Player ${i}`);
+            }
+            
+            if (missingNames) {
+                const proceed = confirm("Some player names are missing. Use default names instead?");
+                if (!proceed) {
+                    return;
+                }
+            }
+            
+            console.log(`Setting up role selection for ${humanPlayers} human players with names:`, playerNames);
+            
+            // Store player names in localStorage or sessionStorage for access later
+            sessionStorage.setItem('playerNames', JSON.stringify(playerNames));
+            
+            // Setup role selection UI first, passing the player names
+            setupRoleSelectionUI(totalPlayers, humanPlayers, playerNames);
+            
+            // Then transition to the role selection screen with a slight delay to ensure all UI is ready
+            console.log("Transitioning to role selection screen");
+            setTimeout(() => {
                 showScreen('role-selection-screen');
-            });
-        });
+            }, 100);
+            
+            return false; // Prevent default
+        };
     }
 }
 
+// Helper function to update player name input fields based on human player count
+function updatePlayerNameFields(humanPlayerCount) {
+    console.log(`Updating player name fields for ${humanPlayerCount} human players`);
+    const playerNamesContainer = document.getElementById('player-names-container');
+    
+    if (!playerNamesContainer) {
+        console.error("Player names container not found");
+        return;
+    }
+    
+    // Clear existing fields
+    playerNamesContainer.innerHTML = '';
+    
+    // Add a heading for the player names section
+    const heading = document.createElement('h3');
+    heading.textContent = 'Enter Player Names';
+    playerNamesContainer.appendChild(heading);
+    
+    // Create input fields for each human player
+    for (let i = 1; i <= humanPlayerCount; i++) {
+        const nameGroup = document.createElement('div');
+        nameGroup.className = 'input-group';
+        
+        const label = document.createElement('label');
+        label.setAttribute('for', `player-name-${i}`);
+        label.textContent = `Player ${i} Name:`;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = `player-name-${i}`;
+        input.name = `player-name-${i}`;
+        input.placeholder = `Enter Player ${i} Name`;
+        input.value = `Player ${i}`; // Default name
+        
+        nameGroup.appendChild(label);
+        nameGroup.appendChild(input);
+        playerNamesContainer.appendChild(nameGroup);
+    }
+    
+    // Show the container if there are human players
+    playerNamesContainer.style.display = humanPlayerCount > 0 ? 'block' : 'none';
+}
+
 // --- Setup Role Selection UI ---
-export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
+export function setupRoleSelectionUI(totalPlayers, humanPlayers, playerNames = []) {
     console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
+    console.log('Player names:', playerNames);
     
     const roleSelectionContainer = document.getElementById('role-selection-container');
     if (!roleSelectionContainer) {
@@ -336,249 +431,269 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         return;
     }
     
-    // If this is a single human player game, just use the existing static role cards
-    if (humanPlayers === 1) {
-        // Make sure the container is visible and in grid format
-        roleSelectionContainer.style.display = 'grid';
-        
-        // Make sure the container has the grid-container class
-        if (!roleSelectionContainer.classList.contains('grid-container')) {
-            roleSelectionContainer.classList.add('grid-container');
-        }
-        
-        // Setup the role selection click handlers
-        const roleCards = roleSelectionContainer.querySelectorAll('.role-card, .grid-item');
-        roleCards.forEach(card => {
-            card.addEventListener('click', () => {
-                // Deselect all cards
-                roleCards.forEach(c => c.classList.remove('selected'));
-                
-                // Select the clicked card
-                card.classList.add('selected');
-            });
-        });
-        
-        // Setup the role confirm button
-        const roleConfirmButton = document.getElementById('role-confirm');
-        if (roleConfirmButton) {
-            // Remove existing event listeners
-            const newBtn = roleConfirmButton.cloneNode(true);
-            roleConfirmButton.parentNode.replaceChild(newBtn, roleConfirmButton);
-            
-            newBtn.addEventListener('click', () => {
-                console.log("Role confirm button clicked");
-                
-                // Get selected role
-                const selectedCard = document.querySelector('.role-card.selected, .grid-item.selected');
-                if (!selectedCard) {
-                    alert("Please select a role first!");
-                    return;
-                }
-                
-                const roleButton = selectedCard.querySelector('.role-select');
-                if (!roleButton) {
-                    alert("Error getting selected role. Please try again.");
-                    return;
-                }
-                
-                const selectedRole = roleButton.getAttribute('data-role');
-                
-                // Create player configurations
-                const playerConfigs = [];
-                
-                // Add human player with selected role
-                playerConfigs.push({
-                    name: "Player 1", 
-                    role: selectedRole,
-                    isHuman: true
-                });
-                
-                // Get remaining available roles for AI players
-                const availableRoles = Object.keys(PLAYER_ROLES);
-                const remainingRoles = availableRoles.filter(role => 
-                    role !== selectedRole.toUpperCase()
-                );
-                
-                // Add AI players with random roles from remaining
-                for (let i = 1; i < totalPlayers; i++) {
-                    const randomIndex = Math.floor(Math.random() * remainingRoles.length);
-                    const aiRole = remainingRoles.splice(randomIndex, 1)[0];
-                    
-                    playerConfigs.push({
-                        name: `AI ${i}`,
-                        role: aiRole,
-                        isHuman: false
-                    });
-                }
-                
-                // Start the game with the selected roles
-                initializeGame(playerConfigs).then(success => {
-                    if (success) {
-                        showScreen('game-board-screen');
-                    } else {
-                        alert("Failed to start the game. Please try again.");
-                    }
-                });
-            });
-        }
-        
-        return;
-    }
-    
     // For multiple human players, use the dynamic UI setup
     // Clear previous content
     roleSelectionContainer.innerHTML = '';
     
+    // Keep the existing grid-container class for layout
+    if (!roleSelectionContainer.classList.contains('grid-container')) {
+        roleSelectionContainer.classList.add('grid-container');
+    }
+    
+    // Create a header for player tabs
+    const headerRow = document.createElement('div');
+    headerRow.className = 'player-selection-header';
+    headerRow.style.gridColumn = '1 / -1'; // Span all columns
+    
+    const playerTabs = document.createElement('div');
+    playerTabs.className = 'player-tabs';
+    
+    // Create tab for each player
+    for (let i = 0; i < humanPlayers; i++) {
+        const playerName = playerNames[i] || `Player ${i + 1}`;
+        const tab = document.createElement('button');
+        tab.className = 'player-tab';
+        tab.textContent = playerName;
+        tab.setAttribute('data-player', i);
+        
+        // First tab is active by default
+        if (i === 0) {
+            tab.classList.add('active');
+        }
+        
+        tab.addEventListener('click', function() {
+            // Update active tab
+            document.querySelectorAll('.player-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update current player indicator
+            const currentPlayerLabel = document.getElementById('current-player-label');
+            if (currentPlayerLabel) {
+                currentPlayerLabel.textContent = `${playerName}, select your role:`;
+            }
+        });
+        
+        playerTabs.appendChild(tab);
+    }
+    
+    // Add player selection label
+    const activePlayerName = playerNames[0] || 'Player 1';
+    const playerLabel = document.createElement('h3');
+    playerLabel.id = 'current-player-label';
+    playerLabel.textContent = `${activePlayerName}, select your role:`;
+    
+    headerRow.appendChild(playerLabel);
+    headerRow.appendChild(playerTabs);
+    roleSelectionContainer.appendChild(headerRow);
+    
     // Get available roles
     const availableRoles = Object.keys(PLAYER_ROLES);
     
-    // Create role selection cards
-    let roleCardsHtml = '';
-    for (let i = 0; i < humanPlayers; i++) {
-        const playerNumber = i + 1;
-        roleCardsHtml += `
-            <div class="role-selection-player">
-                <h3>Human Player ${playerNumber}</h3>
-                <div class="role-options">
-                    ${availableRoles.map(role => {
-                        // Safely get token path or use a default
-                        const tokenPath = PLAYER_ROLES[role].token || 'default.png';
-                        return `
-                        <div class="role-card" data-player="${i}" data-role="${role}">
-                            <div class="role-card-inner">
-                                <h4>${PLAYER_ROLES[role].name}</h4>
-                                <div class="role-image">
-                                    <img src="assets/tokens/${tokenPath}" alt="${PLAYER_ROLES[role].name}" 
-                                         onerror="this.onerror=null; this.src='assets/tokens/default.png';">
-                                </div>
-                                <p>${PLAYER_ROLES[role].description}</p>
-                                <div class="role-stats">
-                                    <span>${PLAYER_ROLES[role].startingResources.money} 💰</span>
-                                    <span>${PLAYER_ROLES[role].startingResources.knowledge} 🧠</span>
-                                    <span>${PLAYER_ROLES[role].startingResources.influence} 🗣️</span>
-                                </div>
-                            </div>
-                        </div>
-                        `;
-                    }).join('')}
+    // Create role cards
+    availableRoles.forEach(role => {
+        const roleLower = role.toLowerCase();
+        const roleInfo = PLAYER_ROLES[role];
+        
+        // Create role card
+        const roleCard = document.createElement('div');
+        roleCard.className = 'role-card grid-item';
+        roleCard.setAttribute('data-role', roleLower);
+        
+        // Safe token path handling
+        const tokenPath = roleInfo.token || `${role.charAt(0)}.png`;
+        
+        // Create card HTML structure similar to the static cards
+        roleCard.innerHTML = `
+            <h2>${roleInfo.name || role}</h2>
+            <h3>${roleInfo.description || ''}</h3>
+            <div class="role-card-body">
+                <div class="role-card-text">
+                    <p><strong>Starting Resources:</strong> ${roleInfo.startingResources?.money || 0} Money, ${roleInfo.startingResources?.knowledge || 0} Knowledge, ${roleInfo.startingResources?.influence || 0} Influence</p>
+                    <p><strong>Special Ability:</strong> ${roleInfo.specialAbility || ''}</p>
+                    <p><strong>Opposition:</strong> ${roleInfo.opposition || ''}</p>
+                </div>
+                <div class="token-image">
+                    <img src="assets/tokens/${tokenPath}" alt="${role}" 
+                         onerror="this.onerror=null; this.src='assets/tokens/default.png';">
                 </div>
             </div>
-        `;
-    }
-    
-    // Add AI player message for remaining slots
-    const aiPlayerCount = totalPlayers - humanPlayers;
-    if (aiPlayerCount > 0) {
-        roleCardsHtml += `
-            <div class="ai-players-info">
-                <h3>${aiPlayerCount} AI Players</h3>
-                <p>AI players will be assigned random roles from those not selected.</p>
+            <div class="role-card-footer">
+                <button class="role-select" data-role="${roleLower}">Select</button>
+                <div class="player-indicators"></div>
             </div>
         `;
-    }
-
-    // Remove the grid-container class for multi-player selection
-    roleSelectionContainer.classList.remove('grid-container');
-    roleSelectionContainer.innerHTML = roleCardsHtml;
-    
-    // Add click event listeners to role cards
-    const roleCards = roleSelectionContainer.querySelectorAll('.role-card');
-    roleCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const playerId = card.getAttribute('data-player');
-            const playerRoleCards = document.querySelectorAll(`.role-card[data-player="${playerId}"]`);
-            
-            // Deselect all cards for this player
-            playerRoleCards.forEach(c => c.classList.remove('selected'));
-            
-            // Select the clicked card
-            card.classList.add('selected');
-            
-            // For multiple human players, disable this role for other players to prevent duplicates
-            if (humanPlayers > 1) {
-                const selectedRole = card.getAttribute('data-role');
-                const otherPlayerCards = document.querySelectorAll(`.role-card:not([data-player="${playerId}"])`);
-                
-                // First, re-enable all cards
-                otherPlayerCards.forEach(c => {
-                    c.style.opacity = "1";
-                    c.style.pointerEvents = "auto";
-                });
-                
-                // Then disable this role for other players
-                const cardsToDisable = document.querySelectorAll(`.role-card:not([data-player="${playerId}"]):not(.selected)[data-role="${selectedRole}"]`);
-                cardsToDisable.forEach(c => {
-                    c.style.opacity = "0.5";
-                    c.style.pointerEvents = "none";
-                });
-            }
-        });
-    });
-
-    // Set up the confirmation button for role selection
-    const roleConfirmButton = document.getElementById('role-confirm');
-    if (roleConfirmButton) {
-        // Remove existing event listeners
-        const newBtn = roleConfirmButton.cloneNode(true);
-        roleConfirmButton.parentNode.replaceChild(newBtn, roleConfirmButton);
         
-        newBtn.addEventListener('click', () => {
-            console.log("Role confirm button clicked");
+        roleSelectionContainer.appendChild(roleCard);
+    });
+    
+    // Add AI message and confirm button at the bottom
+    const footerRow = document.createElement('div');
+    footerRow.className = 'role-selection-footer';
+    footerRow.style.gridColumn = '1 / -1'; // Span all columns
+    
+    // Add AI player message if needed
+    const aiPlayerCount = totalPlayers - humanPlayers;
+    if (aiPlayerCount > 0) {
+        const aiMessage = document.createElement('p');
+        aiMessage.className = 'ai-players-message';
+        aiMessage.textContent = `${aiPlayerCount} AI player${aiPlayerCount > 1 ? 's' : ''} will be assigned random roles.`;
+        footerRow.appendChild(aiMessage);
+    }
+    
+    // Add confirm button
+    const confirmButton = document.createElement('button');
+    confirmButton.id = 'role-confirm';
+    confirmButton.className = 'confirm-btn';
+    confirmButton.textContent = 'Confirm Roles';
+    footerRow.appendChild(confirmButton);
+    
+    roleSelectionContainer.appendChild(footerRow);
+    
+    // Track role selections for each player
+    const playerSelections = Array(humanPlayers).fill(null);
+    
+    // Add click handlers for all role select buttons
+    document.querySelectorAll('.role-select').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
             
-            // Check if all human players have selected a role
-            const humanPlayerCards = document.querySelectorAll('.role-selection-player');
-            const selectedRoles = [];
-            let allHumanPlayersSelected = true;
+            const selectedRole = this.getAttribute('data-role');
+            const roleCard = this.closest('.role-card');
             
-            humanPlayerCards.forEach((playerDiv, index) => {
-                const selectedCard = playerDiv.querySelector('.role-card.selected');
-                if (!selectedCard) {
-                    allHumanPlayersSelected = false;
-                    alert(`Human Player ${index + 1} has not selected a role!`);
-                    return;
-                }
-                selectedRoles.push(selectedCard.getAttribute('data-role'));
-            });
+            // Get the active player
+            const activeTab = document.querySelector('.player-tab.active');
+            if (!activeTab) return;
             
-            if (!allHumanPlayersSelected) {
+            const playerIndex = parseInt(activeTab.getAttribute('data-player'), 10);
+            const playerName = playerNames[playerIndex] || `Player ${playerIndex + 1}`;
+            
+            // Check if this role is already selected by another player
+            const alreadySelectedBy = playerSelections.findIndex((selection, idx) => 
+                selection === selectedRole && idx !== playerIndex
+            );
+            
+            if (alreadySelectedBy !== -1) {
+                const otherPlayerName = playerNames[alreadySelectedBy] || `Player ${alreadySelectedBy + 1}`;
+                alert(`This role is already selected by ${otherPlayerName}`);
                 return;
             }
             
-            // Create player configurations
-            const playerConfigs = [];
-            
-            // Add human players with their selected roles
-            selectedRoles.forEach((role, index) => {
-                playerConfigs.push({
-                    name: `Player ${index + 1}`,
-                    role: role.toUpperCase(),
-                    isHuman: true
-                });
-            });
-            
-            // Get remaining available roles for AI players
-            const remainingRoles = Object.keys(PLAYER_ROLES).filter(role => 
-                !selectedRoles.includes(role.toLowerCase())
-            );
-            
-            // Add AI players with random roles from remaining
-            for (let i = humanPlayers; i < totalPlayers; i++) {
-                const randomIndex = Math.floor(Math.random() * remainingRoles.length);
-                const aiRole = remainingRoles.splice(randomIndex, 1)[0];
-                
-                playerConfigs.push({
-                    name: `AI ${i - humanPlayers + 1}`,
-                    role: aiRole,
-                    isHuman: false
-                });
+            // Remove previous selection for this player
+            if (playerSelections[playerIndex]) {
+                const prevCard = document.querySelector(`.role-card[data-role="${playerSelections[playerIndex]}"]`);
+                if (prevCard) {
+                    prevCard.classList.remove('selected');
+                    prevCard.classList.remove(`selected-by-player-${playerIndex}`);
+                    updateIndicators();
+                }
             }
             
-            // Start the game with the selected roles
-            initializeGame(playerConfigs).then(success => {
-                if (success) {
-                    showScreen('game-board-screen');
-                } else {
-                    alert("Failed to start the game. Please try again.");
+            // Update selection
+            playerSelections[playerIndex] = selectedRole;
+            
+            // Update card visual state
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.classList.remove(`selected-by-player-${playerIndex}`);
+            });
+            
+            roleCard.classList.add('selected');
+            roleCard.classList.add(`selected-by-player-${playerIndex}`);
+            
+            console.log(`${playerName} selected role: ${selectedRole}`);
+            
+            // Update player indicators on all cards
+            updateIndicators();
+            
+            // Auto-advance to next player if available
+            if (playerIndex < humanPlayers - 1) {
+                const nextTab = document.querySelector(`.player-tab[data-player="${playerIndex + 1}"]`);
+                if (nextTab) {
+                    nextTab.click();
+                }
+            }
+        });
+    });
+    
+    // Set up the confirmation button event listener
+    confirmButton.addEventListener('click', () => {
+        console.log("Role confirm button clicked");
+        
+        // Check if all human players have selected a role
+        const missingSelections = playerSelections.findIndex(role => role === null);
+        
+        if (missingSelections !== -1) {
+            const playerName = playerNames[missingSelections] || `Player ${missingSelections + 1}`;
+            alert(`${playerName} has not selected a role!`);
+            
+            // Switch to that player's tab
+            const playerTab = document.querySelector(`.player-tab[data-player="${missingSelections}"]`);
+            if (playerTab) {
+                playerTab.click();
+            }
+            
+            return;
+        }
+        
+        // Create player configurations
+        const playerConfigs = [];
+        
+        // Add human players with their selected roles
+        playerSelections.forEach((role, index) => {
+            const playerName = playerNames[index] || `Player ${index + 1}`;
+            playerConfigs.push({
+                name: playerName,
+                role: role.toUpperCase(),
+                isHuman: true
+            });
+        });
+        
+        // Get remaining available roles for AI players
+        const allRoles = Object.keys(PLAYER_ROLES).map(role => role.toLowerCase());
+        const remainingRoles = allRoles.filter(role => 
+            !playerSelections.includes(role)
+        );
+        
+        // Add AI players with random roles from remaining
+        for (let i = humanPlayers; i < totalPlayers; i++) {
+            const randomIndex = Math.floor(Math.random() * remainingRoles.length);
+            const aiRole = remainingRoles.splice(randomIndex, 1)[0];
+            
+            playerConfigs.push({
+                name: `AI ${i - humanPlayers + 1}`,
+                role: aiRole.toUpperCase(),
+                isHuman: false
+            });
+        }
+        
+        // Start the game with the selected roles
+        initializeGame(playerConfigs).then(success => {
+            if (success) {
+                showScreen('game-board-screen');
+            } else {
+                alert("Failed to start the game. Please try again.");
+            }
+        });
+    });
+    
+    // Function to update player indicators on all cards
+    function updateIndicators() {
+        document.querySelectorAll('.role-card').forEach(card => {
+            const role = card.getAttribute('data-role');
+            const indicators = card.querySelector('.player-indicators');
+            if (!indicators) return;
+            
+            // Clear existing indicators
+            indicators.innerHTML = '';
+            
+            // Add indicator for each player that selected this role
+            playerSelections.forEach((selectedRole, playerIdx) => {
+                if (selectedRole === role) {
+                    const playerName = playerNames[playerIdx] || `Player ${playerIdx + 1}`;
+                    const indicator = document.createElement('span');
+                    indicator.className = 'player-indicator';
+                    indicator.title = `Selected by ${playerName}`;
+                    indicator.textContent = playerName.charAt(0).toUpperCase();
+                    indicators.appendChild(indicator);
                 }
             });
         });
