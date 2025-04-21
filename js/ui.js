@@ -336,14 +336,98 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         return;
     }
     
+    // If this is a single human player game, just use the existing static role cards
+    if (humanPlayers === 1) {
+        // Make sure the container is visible and in grid format
+        roleSelectionContainer.style.display = 'grid';
+        
+        // Make sure the container has the grid-container class
+        if (!roleSelectionContainer.classList.contains('grid-container')) {
+            roleSelectionContainer.classList.add('grid-container');
+        }
+        
+        // Setup the role selection click handlers
+        const cards = roleSelectionContainer.querySelectorAll('.role-card, .grid-item');
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                // Deselect all cards
+                cards.forEach(c => c.classList.remove('selected'));
+                
+                // Select the clicked card
+                card.classList.add('selected');
+            });
+        });
+        
+        // Setup the role confirm button
+        const roleConfirmButton = document.getElementById('role-confirm');
+        if (roleConfirmButton) {
+            // Remove existing event listeners
+            const newBtn = roleConfirmButton.cloneNode(true);
+            roleConfirmButton.parentNode.replaceChild(newBtn, roleConfirmButton);
+            
+            newBtn.addEventListener('click', () => {
+                console.log("Role confirm button clicked");
+                
+                // Get selected role
+                const selectedCard = document.querySelector('.role-card.selected, .grid-item.selected');
+                if (!selectedCard) {
+                    alert("Please select a role first!");
+                    return;
+                }
+                
+                const roleButton = selectedCard.querySelector('.role-select');
+                if (!roleButton) {
+                    alert("Error getting selected role. Please try again.");
+                    return;
+                }
+                
+                const selectedRole = roleButton.getAttribute('data-role');
+                
+                // Create player configurations
+                const playerConfigs = [];
+                
+                // Add human player with selected role
+                playerConfigs.push({
+                    name: "Player 1", 
+                    role: selectedRole,
+                    isHuman: true
+                });
+                
+                // Get remaining available roles for AI players
+                const availableRoles = Object.keys(PLAYER_ROLES);
+                const remainingRoles = availableRoles.filter(role => 
+                    role !== selectedRole.toUpperCase()
+                );
+                
+                // Add AI players with random roles from remaining
+                for (let i = 1; i < totalPlayers; i++) {
+                    const randomIndex = Math.floor(Math.random() * remainingRoles.length);
+                    const aiRole = remainingRoles.splice(randomIndex, 1)[0];
+                    
+                    playerConfigs.push({
+                        name: `AI ${i}`,
+                        role: aiRole,
+                        isHuman: false
+                    });
+                }
+                
+                // Start the game with the selected roles
+                initializeGame(playerConfigs).then(success => {
+                    if (success) {
+                        showScreen('game-board-screen');
+                    } else {
+                        alert("Failed to start the game. Please try again.");
+                    }
+                });
+            });
+        }
+        
+        return;
+    }
+    
+    // For multiple human players, use the dynamic UI setup
     // Clear previous content
     roleSelectionContainer.innerHTML = '';
-    
-    // Hide the original grid-container when using the dynamic UI
-    const originalGridContainer = document.querySelector('.grid-container');
-    if (originalGridContainer) {
-        originalGridContainer.style.display = 'none';
-    }
     
     // Get available roles
     const availableRoles = Object.keys(PLAYER_ROLES);
@@ -393,6 +477,8 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         `;
     }
 
+    // Remove the grid-container class for multi-player selection
+    roleSelectionContainer.classList.remove('grid-container');
     roleSelectionContainer.innerHTML = roleCards;
     
     // Add click event listeners to role cards
@@ -465,13 +551,15 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             selectedRoles.forEach((role, index) => {
                 playerConfigs.push({
                     name: `Player ${index + 1}`,
-                    role: role,
+                    role: role.toUpperCase(),
                     isHuman: true
                 });
             });
             
             // Get remaining available roles for AI players
-            const remainingRoles = Object.keys(PLAYER_ROLES).filter(role => !selectedRoles.includes(role));
+            const remainingRoles = Object.keys(PLAYER_ROLES).filter(role => 
+                !selectedRoles.includes(role.toLowerCase())
+            );
             
             // Add AI players with random roles from remaining
             for (let i = humanPlayers; i < totalPlayers; i++) {
@@ -677,7 +765,8 @@ export function showScreen(screenId) {
         screen.classList.remove('active');
     });
     
-    // Show the target screen
+    // Show the target screen - remove both hidden class and add active
+    targetScreen.classList.remove('hidden');
     targetScreen.classList.add('active');
     
     // Log screen transition
