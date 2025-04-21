@@ -778,13 +778,8 @@ export function showScreen(screenId) {
         
         // For role selection screen, ensure the container is visible
         if (screenId === 'role-selection-screen') {
-            const container = document.getElementById('role-selection-container');
-            if (container) {
-                container.style.display = 'grid';
-                if (!container.classList.contains('grid-container')) {
-                    container.classList.add('grid-container');
-                }
-            }
+            // Force role cards to be visible
+            forceRoleCardsVisible();
         }
         
         // Log screen transition
@@ -983,6 +978,9 @@ export function hideCard() {
         if (detailsElement && !isRoleCardView) {
             detailsElement.style.display = 'none';
         }
+        
+        // Force role cards to be visible
+        forceRoleCardsVisible();
         
         // Log the card closed event
         logUIEvent('CARD_POPUP_CLOSED');
@@ -3308,3 +3306,43 @@ export function hideTargetSelection() {
         targetSelectionModal.style.display = 'none';
     }
 }
+
+/**
+ * Force role cards to be visible
+ * This is a brute-force approach to ensure role cards are always visible
+ */
+export function forceRoleCardsVisible() {
+    // Make all role card grid items visible
+    const roleCards = document.querySelectorAll('.role-card, .grid-item');
+    roleCards.forEach(card => {
+        card.style.display = '';
+        card.style.visibility = 'visible';
+        card.style.opacity = '1';
+    });
+    
+    // Make sure the container is visible
+    const container = document.getElementById('role-selection-container');
+    if (container) {
+        container.style.display = 'grid';
+        if (!container.classList.contains('grid-container')) {
+            container.classList.add('grid-container');
+        }
+    }
+    
+    // Force any card-additional-details to be visible during role selection
+    if (document.getElementById('role-selection-screen')?.classList.contains('active')) {
+        const details = document.getElementById('card-additional-details');
+        if (details) {
+            details.style.display = 'block';
+        }
+    }
+}
+
+// Add call to DOMContentLoaded to ensure role cards are visible on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure role cards are visible after page loads
+    setTimeout(forceRoleCardsVisible, 500);
+});
+
+// Also call periodically to ensure they stay visible
+setInterval(forceRoleCardsVisible, 1000);
