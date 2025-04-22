@@ -76,21 +76,64 @@ const loadTokenImages = async () => {
         
         img.onerror = () => {
             console.warn(`Failed to load token image for ${role}: ${TOKEN_DIR}/${token}`);
-            // Use default token instead of creating a canvas fallback
-            const defaultImg = new Image();
-            defaultImg.onload = () => {
-                console.log(`Using default token image for ${role}`);
-                boardState.playerTokenImages[role] = defaultImg;
+            
+            // Load any other token as a fallback - we know at least one token exists
+            // since we've already tried to load all of them
+            const fallbackImg = new Image();
+            
+            fallbackImg.onload = () => {
+                console.log(`Using fallback token image for ${role}`);
+                boardState.playerTokenImages[role] = fallbackImg;
                 resolve();
             };
             
-            defaultImg.onerror = () => {
-                console.error(`Failed to load default token image for ${role}`);
-                resolve(); // Resolve anyway to avoid hanging
+            fallbackImg.onerror = () => {
+                console.error(`Could not load any token image for ${role}, creating a placeholder`);
+                // Create a basic colored circle as an absolute fallback
+                const canvas = document.createElement('canvas');
+                canvas.width = 40;
+                canvas.height = 40;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw a simple circle with the role letter
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(20, 20, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(role.charAt(0), 20, 20);
+                
+                boardState.playerTokenImages[role] = canvas;
+                resolve();
             };
             
-            // Use a default token image from assets folder
-            defaultImg.src = `${TOKEN_DIR}/default.png?nocache=${Date.now()}`;
+            // Try another token that we know exists
+            const existingTokens = Object.keys(boardState.playerTokenImages);
+            if (existingTokens.length > 0) {
+                const existingRole = existingTokens[0];
+                if (boardState.playerTokenImages[existingRole] && 
+                    boardState.playerTokenImages[existingRole].complete) {
+                    // Simply use an already loaded token
+                    console.log(`Using existing token from ${existingRole} as fallback for ${role}`);
+                    boardState.playerTokenImages[role] = boardState.playerTokenImages[existingRole];
+                    return resolve();
+                }
+            }
+            
+            // If no tokens loaded yet, try a different role's token
+            const alternateRoles = ['HISTORIAN', 'REVOLUTIONARY', 'COLONIALIST', 'ENTREPRENEUR', 'POLITICIAN', 'ARTIST'];
+            for (const altRole of alternateRoles) {
+                if (altRole !== role) {
+                    fallbackImg.src = `${TOKEN_DIR}/${PLAYER_ROLES[altRole]?.token}?nocache=${Date.now()}`;
+                    return; // Let onload/onerror handle resolution
+                }
+            }
+            
+            // If all else fails, trigger the error handler to create a canvas fallback
+            fallbackImg.onerror();
         };
         
         // Ensure path is correct and add cache-busting
@@ -106,60 +149,95 @@ const loadTokenImages = async () => {
 };
 
 /**
- * Draws a single player token at its current coordinates (Scaled).
+ * Creates/updates a player token DOM element instead of drawing it on canvas
  */
 export const drawPlayerToken = (player) => {
-    if (!boardState.ctx || !player || !player.currentCoords || !boardState.scale || boardState.scale <= 0) return;
+    if (!player || !player.currentCoords) return;
     
-    const ctx = boardState.ctx;
-    const scale = boardState.scale;
-    const canvasX = player.currentCoords.x * scale;
-    const canvasY = player.currentCoords.y * scale;
-    const role = player.role; 
-    const tokenSizeOnCanvas = TOKEN_SIZE * scale; 
-    const radius = tokenSizeOnCanvas / 2;
-    const tokenImage = role ? boardState.playerTokenImages[role] : null;
-
-    if (tokenImage && tokenImage.complete && tokenImage.naturalWidth > 0) {
-        try {
-            ctx.drawImage(
-                tokenImage, 
-                canvasX - radius, 
-                canvasY - radius, 
-                tokenSizeOnCanvas, 
-                tokenSizeOnCanvas
-            );
-        } catch (e) {
-            console.error(`Error drawing token image for role ${role}:`, e);
+    const boardContainer = document.getElementById('board-container');
+    if (!boardContainer) return;
+    
+    // Make sure the token container exists
+    let tokenContainer = document.getElementById('player-tokens-container');
+    if (!tokenContainer) {
+        tokenContainer = document.createElement('div');
+        tokenContainer.id = 'player-tokens-container';
+        tokenContainer.style.position = 'absolute';
+        tokenContainer.style.top = '0';
+        tokenContainer.style.left = '0';
+        tokenContainer.style.width = '100%';
+        tokenContainer.style.height = '100%';
+        tokenContainer.style.pointerEvents = 'none';
+        boardContainer.appendChild(tokenContainer);
+    }
+    
+    // Check if this player's token element already exists
+    let tokenElement = document.getElementById(`player-token-${player.id}`);
+    
+    // If it doesn't exist, create it
+    if (!tokenElement) {
+        tokenElement = document.createElement('div');
+        tokenElement.id = `player-token-${player.id}`;
+        tokenElement.className = 'player-token';
+        tokenElement.style.position = 'absolute';
+        tokenElement.style.width = `${TOKEN_SIZE}px`;
+        tokenElement.style.height = `${TOKEN_SIZE}px`;
+        tokenElement.style.pointerEvents = 'none';
+        
+        // Create the image element that references the token image
+        const tokenImg = document.createElement('img');
+        if (player.role && PLAYER_ROLES[player.role] && PLAYER_ROLES[player.role].token) {
+            tokenImg.src = `${TOKEN_DIR}/${PLAYER_ROLES[player.role].token}`;
+        } else {
+            console.warn(`Could not find token for player ${player.id} with role ${player.role}`);
+            tokenImg.src = `${TOKEN_DIR}/default.png`;
         }
+        tokenImg.alt = player.name || player.role || 'Player Token';
+        tokenImg.style.width = '100%';
+        tokenImg.style.height = '100%';
+        tokenElement.appendChild(tokenImg);
+        
+        // Add to the container
+        tokenContainer.appendChild(tokenElement);
+    }
+    
+    // Position the token based on the player's coordinates
+    if (player.currentCoords) {
+        const [scaledX, scaledY] = scaleCoordinates(player.currentCoords.x, player.currentCoords.y);
+        const radius = (TOKEN_SIZE * boardState.scale) / 2;
+        tokenElement.style.left = `${scaledX - radius}px`;
+        tokenElement.style.top = `${scaledY - radius}px`;
+        tokenElement.style.transform = `scale(${boardState.scale})`;
+        tokenElement.style.transformOrigin = 'center';
     }
 };
 
 /**
- * Draws all player tokens based on their current coordinates.
+ * Updates all player tokens based on current coordinates using DOM elements
  */
 export const drawAllPlayerTokens = () => {
     // Get players from the players module
     const players = getPlayers();
     
     if (!players || players.length === 0) {
-        console.warn("No players available to draw tokens");
+        console.warn("No players available to update tokens");
         return;
     }
     
+    // Draw a token for each player
     players.forEach(player => {
         if (player && player.currentCoords) {
             drawPlayerToken(player);
         }
     });
     
-    console.log(`Drew tokens for ${players.length} players`);
+    console.log(`Updated DOM token elements for ${players.length} players`);
 };
 
 /**
  * Draws connections between spaces defined in the path arrays (Scaled).
  */
-const drawPathConnections = () => {
+export const drawPathConnections = () => {
     // Connections are not needed - skip drawing
     return;
 };
@@ -167,7 +245,7 @@ const drawPathConnections = () => {
 /**
  * Draws spaces defined in the path arrays (Scaled).
  */
-const drawPathSpaces = () => {
+export const drawPathSpaces = () => {
     if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
     const ctx = boardState.ctx;
     const scale = boardState.scale;
@@ -868,69 +946,34 @@ function hexToRgb(hex) {
     return `${r}, ${g}, ${b}`;
 }
 
+/**
+ * Draws the board spaces for hit testing
+ */
 export const drawBoard = () => {
     if (!boardState.ctx || !boardState.scale || boardState.scale <= 0) return;
     
     const ctx = boardState.ctx;
-    const scale = boardState.scale;
-    const allPaths = [AgeOfExpansion, AgeOfResistance, AgeOfReckoning, AgeOfLegacy];
-    const drawnCoords = new Set(); 
-
-    const drawScaledPoint = (x, y, color, radius = 3) => {
-        const [scaledX, scaledY] = scaleCoordinates(x, y);
-        const scaledRadius = Math.max(1, radius * scale); 
-        const coordKey = `${scaledX.toFixed(1)},${scaledY.toFixed(1)}`; 
-        if (!drawnCoords.has(coordKey)) {
-            // Make everything completely transparent - only used for tracking
-            ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-            ctx.beginPath();
-            ctx.arc(scaledX, scaledY, scaledRadius, 0, Math.PI * 2); 
-            ctx.fill();
-            drawnCoords.add(coordKey);
-        }
-    };
     
-    const drawScaledPolygon = (polygonCoords, fillColor = 'rgba(0, 0, 0, 0)', strokeColor = 'rgba(0, 0, 0, 0)') => {
-         if (!Array.isArray(polygonCoords) || polygonCoords.length < 3) return;
-         // Make polygons transparent - only used for tracking
-         ctx.fillStyle = fillColor;
-         ctx.strokeStyle = strokeColor;
-         ctx.lineWidth = 1;
-         ctx.beginPath();
-         const [startX, startY] = scaleCoordinates(polygonCoords[0][0], polygonCoords[0][1]);
-         ctx.moveTo(startX, startY);
-         for (let i = 1; i < polygonCoords.length; i++) {
-             const [lineX, lineY] = scaleCoordinates(polygonCoords[i][0], polygonCoords[i][1]);
-             ctx.lineTo(lineX, lineY);
-         }
-         ctx.closePath();
-         ctx.fill();
-    };
-
-    // Draw spaces for tracking purposes (invisible)
-    if (START_SPACE?.coordinates) {
-        drawScaledPoint(START_SPACE.coordinates[0], START_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
+    // Clear the canvas
+    ctx.clearRect(0, 0, boardState.canvas.width, boardState.canvas.height);
+    
+    // Draw the board image if it exists and is loaded
+    if (boardState.boardImage && boardState.boardImage.complete && boardState.boardImage.naturalWidth > 0) {
+        ctx.drawImage(boardState.boardImage, 0, 0, boardState.canvas.width, boardState.canvas.height);
+    } else {
+        // Draw a background color if no image
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(0, 0, boardState.canvas.width, boardState.canvas.height);
     }
-    if (FINISH_SPACE?.coordinates) {
-        drawScaledPoint(FINISH_SPACE.coordinates[0], FINISH_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
-    }
-
-    // Draw spaces for tracking purposes (invisible)
-    for (const path of allPaths) {
-        if (!path || !path.segments) continue;
-        
-        // Draw each segment in the path (invisible)
-        for (const space of path.segments) {
-            if (!space || !space.coordinates) continue;
-            
-            if ((space.Type === 'choicepoint' || space.Type === 'junction') && 
-                Array.isArray(space.coordinates) && space.coordinates.length >= 3) {
-                drawScaledPolygon(space.coordinates, 'rgba(0, 0, 0, 0)'); 
-            } else if (Array.isArray(space.coordinates) && space.coordinates[0]) {
-                drawScaledPoint(space.coordinates[0][0], space.coordinates[0][1], 'rgba(0, 0, 0, 0)', 4); 
-            }
-        }
-    }
+    
+    // Draw path connections (no-op but keeps linter happy)
+    drawPathConnections();
+    
+    // Draw the paths and spaces (invisible for hit detection)
+    drawInvisibleSpaces();
+    
+    // Highlight any active choice points
+    highlightChoicePoints();
 };
 
 /**
@@ -962,6 +1005,33 @@ export const setupBoard = async () => {
     }
     boardState.canvas = canvas;
     boardState.ctx = ctx;
+    
+    // Load board image first
+    try {
+        // Only create a new Image if we don't already have one
+        if (!boardState.boardImage || !boardState.boardImage.complete) {
+            console.log("Loading board image...");
+            boardState.boardImage = new Image();
+            
+            // Create a promise to wait for the board image to load
+            await new Promise((resolve) => {
+                boardState.boardImage.onload = () => {
+                    console.log("Board image loaded successfully");
+                    resolve();
+                };
+                
+                boardState.boardImage.onerror = (err) => {
+                    console.error("Failed to load board image:", err);
+                    // Continue anyway but note the error
+                    resolve();
+                };
+                
+                boardState.boardImage.src = "assets/images/game-board.jpg";
+            });
+        }
+    } catch (err) {
+        console.error("Error loading board image:", err);
+    }
     
     // Load token images (this is used for animating token movements)
     await loadTokenImages();
@@ -1005,49 +1075,68 @@ export const setupBoard = async () => {
 // ===== Animation Functions =====
 
 /**
- * Animates a player token smoothly between two points on the canvas (Scaled).
+ * Animates a player token smoothly between two points using DOM elements
  */
 export function animateTokenToPosition(player, startCoords, targetCoords, duration = 300, callback) {
-    if (!player || !startCoords || !targetCoords || !boardState.ctx || !boardState.scale) {
+    if (!player || !startCoords || !targetCoords) {
         console.error("animateTokenToPosition: Invalid args or state.");
         if (callback) callback();
         return;
     }
+    
+    // Find the token DOM element for this player
+    const tokenElement = document.getElementById(`player-token-${player.id}`);
+    if (!tokenElement) {
+        console.error(`Token element not found for player ${player.id}`);
+        // Create it if it doesn't exist
+        drawPlayerToken(player);
+        if (callback) callback();
+        return;
+    }
+    
+    // Convert coordinates to screen position
     const [startX, startY] = scaleCoordinates(startCoords.x, startCoords.y);
     const [targetX, targetY] = scaleCoordinates(targetCoords.x, targetCoords.y);
+    const radius = (TOKEN_SIZE * boardState.scale) / 2;
+    
+    // Set the starting position
+    tokenElement.style.left = `${startX - radius}px`;
+    tokenElement.style.top = `${startY - radius}px`;
+    
+    // Set up animation
     const startTime = performance.now();
-    const visualPlayer = { ...player, x: startX, y: startY }; 
-
+    
     function step(currentTime) {
         const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1); 
-        visualPlayer.x = startX + (targetX - startX) * progress;
-        visualPlayer.y = startY + (targetY - startY) * progress;
-
-        // Redraw board and tokens during animation
-        boardState.ctx.clearRect(0, 0, boardState.canvas.width, boardState.canvas.height);
-        boardState.ctx.drawImage(boardState.boardImage, 0, 0, boardState.canvas.width, boardState.canvas.height);
-        drawPathConnections();
-        drawPathSpaces();
-        const otherPlayers = getPlayers().filter(p => p.id !== player.id);
-        otherPlayers.forEach(p => { if (p && p.currentCoords) drawPlayerToken(p); });
-        drawAnimatingToken(visualPlayer); 
-
+        const progress = Math.min(elapsedTime / duration, 1);
+        
+        // Use easing for smoother animation
+        const easedProgress = progress < 0.5 ? 
+            2 * progress * progress : 
+            1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        // Calculate current position
+        const currentX = startX + (targetX - startX) * easedProgress;
+        const currentY = startY + (targetY - startY) * easedProgress;
+        
+        // Update element position
+        tokenElement.style.left = `${currentX - radius}px`;
+        tokenElement.style.top = `${currentY - radius}px`;
+        
+        // Continue animation if not complete
         if (progress < 1) {
             requestAnimationFrame(step);
         } else {
-            if (callback) callback(); 
+            // Ensure we're at the final position
+            tokenElement.style.left = `${targetX - radius}px`;
+            tokenElement.style.top = `${targetY - radius}px`;
+            
+            // Call the completion callback
+            if (callback) callback();
         }
     }
     
-    function drawAnimatingToken(p) {
-        const tokenSizeOnCanvas = TOKEN_SIZE * boardState.scale;
-        const radius = tokenSizeOnCanvas / 2;
-        const tokenImage = p.role ? boardState.playerTokenImages[p.role] : null;
-        if (tokenImage && tokenImage.complete && tokenImage.naturalWidth > 0) {
-            boardState.ctx.drawImage(tokenImage, p.x - radius, p.y - radius, tokenSizeOnCanvas, tokenSizeOnCanvas);
-        }
-    }
+    // Start animation
     requestAnimationFrame(step);
 }
 
@@ -1568,3 +1657,11 @@ export function updateBoardPlayers(players) {
         boardState.players = players;
     }
 }
+
+/**
+ * Draws invisible spaces on the canvas for hit testing
+ */
+const drawInvisibleSpaces = () => {
+    // Simply call the existing function for drawing spaces
+    drawPathSpaces();
+};
