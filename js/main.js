@@ -19,16 +19,12 @@ import {
     setupBoard
 } from './board.js';
 
-import { 
-    handleRoleConfirmation,
-    handleDiceRoll,
-    handleEndTurn,
-    handleAbilityUse,
-    handleNewGame,
-    handleTradeResponse
-} from './game.js';
+import * as gameModule from './game.js';
 
 import './animations.js'; // Import animations module
+
+// Expose game module to window for cross-module access
+window.game = gameModule;
 
 // Global event handler map
 const eventHandlers = {
@@ -38,14 +34,14 @@ const eventHandlers = {
             setupPlayerCountUI();
             showScreen('player-count-screen');
         },
-        'role-confirm': () => handleRoleConfirmation(),
-        'roll-dice-btn': () => handleDiceRoll(),
-        'end-turn-btn': () => handleEndTurn(),
-        'use-ability-btn': () => handleAbilityUse(),
+        'role-confirm': () => gameModule.handleRoleConfirmation(),
+        'roll-dice-btn': () => gameModule.handleDiceRoll(),
+        'end-turn-btn': () => gameModule.handleEndTurn(),
+        'use-ability-btn': () => gameModule.handleAbilityUse(),
         'close-card-btn': () => hideCard(),
-        'new-game-btn': () => handleNewGame(),
-        'trade-accept-btn': () => handleTradeResponse(true),
-        'trade-reject-btn': () => handleTradeResponse(false),
+        'new-game-btn': () => gameModule.handleNewGame(),
+        'trade-accept-btn': () => gameModule.handleTradeResponse(true),
+        'trade-reject-btn': () => gameModule.handleTradeResponse(false),
         'cancel-target-btn': () => hideTargetSelection(),
         'board-canvas': (e) => handleBoardClick(e)
     },
@@ -84,7 +80,7 @@ function setupEventDelegation() {
             }
             
             console.log("Role confirmed, initializing game...");
-            handleRoleConfirmation();
+            gameModule.handleRoleConfirmation();
         }
     });
 

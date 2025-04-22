@@ -468,28 +468,37 @@ select, input[type="text"] {
 .path-choice-btn.cyan { background-color: var(--cyan-color); }
 
 /* Game board screen */
+/* --- Game Board Screen --- */
 #game-board-screen {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    display: flex; /* Change to flex */
+    flex-direction: column; /* Stack elements vertically */
+    height: 100vh; /* Full viewport height */
+    width: 100vw;
+    overflow: auto; /* allow screen overflow */
+    background-color: black;
+    padding: 0; /* Remove padding */
+    justify-content: flex-start; /* Align to top */
 }
 
+/* Container for the board image/canvas */
 #board-container {
-    flex: 1;
+    flex: 1; /* Take up all available space */
+    width: 100%;
     position: relative;
-    width: 100%;
-    overflow: hidden;
+    overflow: auto; /* allow board overflow */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-image: url('../assets/board.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
-
+  
 #board-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Maintain aspect ratio */
 }
 
 #player-info-panel {

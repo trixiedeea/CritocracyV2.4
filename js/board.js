@@ -285,8 +285,21 @@ const setupBoardClickListener = (canvas) => {
             if (x >= area.x && x <= area.x + area.width && 
                 y >= area.y && y <= area.y + area.height) {
                 console.log(`Clicked on ${area.name} Deck`);
-                if (window.gameHandlers && typeof window.gameHandlers.handleSpecialEventCardDraw === 'function') {
-                    window.gameHandlers.handleSpecialEventCardDraw(area.name);
+                
+                // Debug: Check if game module is available
+                console.log("Game module available:", Boolean(window.game));
+                console.log("handleDeckClick available:", Boolean(window.game?.handleDeckClick));
+                console.log("Game state:", window.game?.getGameState ? window.game.getGameState() : "Not available");
+                
+                // Use the proper game module function for handling deck clicks
+                if (window.game && typeof window.game.handleDeckClick === 'function') {
+                    try {
+                        window.game.handleDeckClick(area.name);
+                    } catch (err) {
+                        console.error("Error calling handleDeckClick:", err);
+                    }
+                } else {
+                    console.error("Cannot handle deck click: window.game.handleDeckClick not found");
                 }
                 return;
             }

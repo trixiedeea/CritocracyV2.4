@@ -1319,20 +1319,25 @@ export function handleMoveClick(coords) {
 export function handleDeckClick(deckName) {
     console.log("handleDeckClick:", deckName);
     
-    const currentPlayer = gameState.currentPlayer;
+    // Get the current player using the current player ID from game state
+    const currentPlayerId = gameState.currentPlayerId;
+    const currentPlayer = getPlayerById(currentPlayerId);
+    
     if (!currentPlayer) {
         console.error("No current player found");
+        logMessage("Cannot draw cards: No active player.");
         return;
     }
 
-    // Check if player is allowed to draw from this deck
-    const currentPathColor = getPathColorFromCoords(currentPlayer.currentCoords.x, currentPlayer.currentCoords.y);
-    if (currentPathColor !== deckName.toLowerCase()) {
-        logMessage(`You can only draw from the ${deckName} deck when on a ${deckName} path.`);
+    console.log("Current player:", currentPlayer.name, currentPlayer.id);
+
+    // Check if player is allowed to draw from this deck based on game state
+    if (gameState.turnState !== 'AWAITING_ROLL' && gameState.turnState !== 'ACTION_COMPLETE') {
+        logMessage(`You can only draw cards at the start of your turn or after completing an action.`);
         return;
     }
 
-    // Draw a card from the deck
+    // Draw a card from the deck using the current player and deck name
     handleSpecialEventCardDraw(currentPlayer, deckName);
 }
 

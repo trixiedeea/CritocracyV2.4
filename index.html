@@ -257,6 +257,9 @@
         // Import the showScreen function
         import { showScreen } from './js/ui.js';
         
+        // Flag to track if game is already being initialized
+        let gameInitializing = false;
+        
         // Fix for role selection buttons with specific focus on event capture
         document.addEventListener('DOMContentLoaded', function() {
             // Wait a short time to ensure all elements are fully rendered
@@ -358,29 +361,59 @@
                         // Set up the roll turn order button
                         const rollTurnOrderBtn = document.getElementById('roll-turn-order-btn');
                         if (rollTurnOrderBtn) {
-                            rollTurnOrderBtn.onclick = function() {
-                                // Now import the game module and initialize the game
-                                import('./js/game.js').then(gameModule => {
-                                    // Create player configurations with the selected role
-                                    const playerConfigs = [{
-                                        name: "Player 1", 
-                                        role: roleData,
-                                        isHuman: true
-                                    }];
-                                    
-                                    // Show dice rolling animation here if needed
-                                    
-                                    // Initialize the game with the player configuration
-                                    gameModule.initializeGame(playerConfigs).then(success => {
-                                        if (success) {
-                                            // Show game board screen if initialization successful
-                                            showScreen('game-board-screen');
-                                        } else {
-                                            alert("Failed to start the game. Please try again.");
-                                        }
+                            // Remove existing event listeners by cloning
+                            const newBtn = rollTurnOrderBtn.cloneNode(true);
+                            rollTurnOrderBtn.parentNode.replaceChild(newBtn, rollTurnOrderBtn);
+                            
+                            newBtn.addEventListener('click', function() {
+                                // Only initialize the game if not already in progress
+                                if (gameInitializing) {
+                                    console.log("Game initialization already in progress, ignoring click");
+                                    return;
+                                }
+                                
+                                // Set flag to prevent multiple initializations
+                                gameInitializing = true;
+                                this.disabled = true;
+                                this.textContent = "Initializing...";
+                                
+                                // Reset modules before initialization
+                                Promise.all([
+                                    import('./js/players.js').then(playersModule => {
+                                        console.log("Resetting all player state...");
+                                        playersModule.resetPlayers();
+                                    })
+                                ]).then(() => {
+                                    // Now import the game module and initialize the game
+                                    import('./js/game.js').then(gameModule => {
+                                        // Create player configurations with the selected role
+                                        const playerConfigs = [{
+                                            name: "Player 1", 
+                                            role: roleData,
+                                            isHuman: true
+                                        }];
+                                        
+                                        // Initialize the game with the player configuration
+                                        gameModule.initializeGame(playerConfigs).then(success => {
+                                            if (success) {
+                                                // Show game board screen if initialization successful
+                                                showScreen('game-board-screen');
+                                            } else {
+                                                alert("Failed to start the game. Please try again.");
+                                                gameInitializing = false;
+                                                this.disabled = false;
+                                                this.textContent = "Roll Dice";
+                                            }
+                                        }).catch(err => {
+                                            console.error("Game initialization error:", err);
+                                            alert("An error occurred initializing the game.");
+                                            gameInitializing = false;
+                                            this.disabled = false;
+                                            this.textContent = "Roll Dice";
+                                        });
                                     });
                                 });
-                            };
+                            });
                         }
                     });
                 }
