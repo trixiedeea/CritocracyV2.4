@@ -19,7 +19,7 @@ const deckRegions = [];
 
 // ===== Board Constants =====
 const TOKEN_DIR = 'assets/tokens'; 
-const TOKEN_SIZE = 30; // Base size in original board pixels
+const TOKEN_SIZE = 24; // Base size in original board pixels
 
 // ===== Board State =====
 let boardState = {
@@ -61,24 +61,62 @@ const isPointInPolygon = (point, polygon) => {
  * Loads player token images.
  */
 const loadTokenImages = async () => {
+    console.log("Starting to load token images from:", TOKEN_DIR);
     const roles = Object.keys(PLAYER_ROLES);
+    
     const promises = roles.map(role => new Promise((resolve) => {
         const img = new Image();
+        const token = PLAYER_ROLES[role]?.token;
+        
         img.onload = () => {
+            console.log(`Successfully loaded token image for ${role}: ${token}`);
             boardState.playerTokenImages[role] = img;
             resolve();
         };
+        
         img.onerror = () => {
-            console.warn(`Failed to load token image: ${PLAYER_ROLES[role]?.token || 'unknown'}`);
-            resolve(); // Resolve anyway, use fallback
+            console.warn(`Failed to load token image for ${role}: ${TOKEN_DIR}/${token}`);
+            // Create a fallback colored circle
+            const fallbackCanvas = document.createElement('canvas');
+            fallbackCanvas.width = 40;
+            fallbackCanvas.height = 40;
+            const ctx = fallbackCanvas.getContext('2d');
+            // Use role-specific colors for fallback
+            let color = '#FF0000';
+            switch(role) {
+                case 'HISTORIAN': color = '#9C54DE'; break;
+                case 'REVOLUTIONARY': color = '#1B3DE5'; break;
+                case 'COLONIALIST': color = '#00FFFF'; break;
+                case 'ENTREPRENEUR': color = '#FF66FF'; break;
+                case 'POLITICIAN': color = '#8A2BE2'; break;
+                case 'ARTIST': color = '#FF69B4'; break;
+            }
+            
+            // Draw colored circle with first letter
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(20, 20, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(role.charAt(0), 20, 20);
+            
+            // Use this as fallback
+            boardState.playerTokenImages[role] = fallbackCanvas;
+            resolve();
         };
-        img.src = `${TOKEN_DIR}/${PLAYER_ROLES[role]?.token}`;
+        
+        // Ensure path is correct and add cache-busting
+        img.src = `${TOKEN_DIR}/${token}?nocache=${Date.now()}`;
     }));
+    
     try {
         await Promise.all(promises);
-        console.log("Token image loading attempted.");
+        console.log("All token images loaded or fallbacks created.");
     } catch (error) {
-         console.error("Unexpected error during Promise.all for token loading:", error);
+        console.error("Unexpected error during token loading:", error);
     }
 };
 
@@ -116,9 +154,21 @@ export const drawPlayerToken = (player) => {
  * Draws all player tokens based on their current coordinates.
  */
 export const drawAllPlayerTokens = () => {
-    // This function is used in the codebase but doesn't need to do anything
-    // since player tokens are already handled by HTML
-    return;
+    // Get players from the players module
+    const players = getPlayers();
+    
+    if (!players || players.length === 0) {
+        console.warn("No players available to draw tokens");
+        return;
+    }
+    
+    players.forEach(player => {
+        if (player && player.currentCoords) {
+            drawPlayerToken(player);
+        }
+    });
+    
+    console.log(`Drew tokens for ${players.length} players`);
 };
 
 /**
