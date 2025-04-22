@@ -18,7 +18,7 @@ export const PLAYER_ROLES = {
         activeAbilityDescription: 'Gain 5 Knowledge by activating historical insights'
     },
     REVOLUTIONARY: {
-        name: 'Audra Lorde the Revolutionary',
+        name: 'Audre Lorde the Revolutionary',
         description: 'The Quietest Revolutionary That Ever There Was',
         startingResources: { knowledge: 14, influence: 8, money: 0 },
         opposingRole: 'COLONIALIST',
