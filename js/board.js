@@ -19,7 +19,7 @@ const deckRegions = [];
 
 // ===== Board Constants =====
 const TOKEN_DIR = 'assets/tokens';
-const TOKEN_SIZE = 24; // Base size in original board pixels
+const TOKEN_SIZE = 40; // Base size in original board pixels
 
 // ===== Board State =====
 let boardState = {
@@ -62,82 +62,52 @@ const isPointInPolygon = (point, polygon) => {
  */
 const loadTokenImages = async () => {
     console.log("Starting to load token images from:", TOKEN_DIR);
-    const roles = Object.keys(PLAYER_ROLES);
     
-    const promises = roles.map(role => new Promise((resolve) => {
+    // Define token mappings
+    const tokenMappings = {
+        'Historian': 'H.png',
+        'Revolutionary': 'R.png',
+        'Colonialist': 'C.png',
+        'Entrepreneur': 'E.png',
+        'Politician': 'P.png',
+        'Artist': 'A.png'
+    };
+    
+    const promises = Object.entries(tokenMappings).map(([role, tokenFile]) => new Promise((resolve) => {
         const img = new Image();
-        const token = PLAYER_ROLES[role]?.token;
         
         img.onload = () => {
-            console.log(`Successfully loaded token image for ${role}: ${token}`);
+            console.log(`Successfully loaded token image for ${role}: ${tokenFile}`);
             boardState.playerTokenImages[role] = img;
             resolve();
         };
         
         img.onerror = () => {
-            console.warn(`Failed to load token image for ${role}: ${TOKEN_DIR}/${token}`);
+            console.warn(`Failed to load token image for ${role}: ${TOKEN_DIR}/${tokenFile}`);
             
-            // Load any other token as a fallback - we know at least one token exists
-            // since we've already tried to load all of them
-            const fallbackImg = new Image();
+            // Create a fallback canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = TOKEN_SIZE;
+            canvas.height = TOKEN_SIZE;
+            const ctx = canvas.getContext('2d');
             
-            fallbackImg.onload = () => {
-                console.log(`Using fallback token image for ${role}`);
-                boardState.playerTokenImages[role] = fallbackImg;
-                resolve();
-            };
+            // Draw a simple circle with the role letter
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.arc(TOKEN_SIZE/2, TOKEN_SIZE/2, TOKEN_SIZE/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(role.charAt(0), TOKEN_SIZE/2, TOKEN_SIZE/2);
             
-            fallbackImg.onerror = () => {
-                console.error(`Could not load any token image for ${role}, creating a placeholder`);
-                // Create a basic colored circle as an absolute fallback
-                const canvas = document.createElement('canvas');
-                canvas.width = 40;
-                canvas.height = 40;
-                const ctx = canvas.getContext('2d');
-                
-                // Draw a simple circle with the role letter
-                ctx.fillStyle = '#FF0000';
-                ctx.beginPath();
-                ctx.arc(20, 20, 18, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(role.charAt(0), 20, 20);
-                
-                boardState.playerTokenImages[role] = canvas;
-                resolve();
-            };
-            
-            // Try another token that we know exists
-            const existingTokens = Object.keys(boardState.playerTokenImages);
-            if (existingTokens.length > 0) {
-                const existingRole = existingTokens[0];
-                if (boardState.playerTokenImages[existingRole] && 
-                    boardState.playerTokenImages[existingRole].complete) {
-                    // Simply use an already loaded token
-                    console.log(`Using existing token from ${existingRole} as fallback for ${role}`);
-                    boardState.playerTokenImages[role] = boardState.playerTokenImages[existingRole];
-                    return resolve();
-                }
-            }
-            
-            // If no tokens loaded yet, try a different role's token
-            const alternateRoles = ['HISTORIAN', 'REVOLUTIONARY', 'COLONIALIST', 'ENTREPRENEUR', 'POLITICIAN', 'ARTIST'];
-            for (const altRole of alternateRoles) {
-                if (altRole !== role) {
-                    fallbackImg.src = `${TOKEN_DIR}/${PLAYER_ROLES[altRole]?.token}?nocache=${Date.now()}`;
-                    return; // Let onload/onerror handle resolution
-                }
-            }
-            
-            // If all else fails, trigger the error handler to create a canvas fallback
-            fallbackImg.onerror();
+            boardState.playerTokenImages[role] = canvas;
+            resolve();
         };
         
-        // Ensure path is correct and add cache-busting
-        img.src = `${TOKEN_DIR}/${token}?nocache=${Date.now()}`;
+        // Load the token image
+        img.src = `${TOKEN_DIR}/${tokenFile}?nocache=${Date.now()}`;
     }));
     
     try {
@@ -198,7 +168,7 @@ export function managePlayerTokens(players, playerId = null) {
             tokenContainer.style.width = '100%';
             tokenContainer.style.height = '100%';
             tokenContainer.style.pointerEvents = 'none';
-            tokenContainer.style.zIndex = '1000'; // Ensure tokens are above everything
+            tokenContainer.style.zIndex = '1000';
             document.getElementById('board-container').appendChild(tokenContainer);
         }
         
@@ -219,16 +189,17 @@ export function managePlayerTokens(players, playerId = null) {
             
             // Create token element
             const tokenElement = document.createElement('div');
+            tokenElement.id = `player-token-${player.id}`;
             tokenElement.className = 'player-token';
             tokenElement.style.position = 'absolute';
-            tokenElement.style.width = '40px';
-            tokenElement.style.height = '40px';
+            tokenElement.style.width = `${TOKEN_SIZE}px`;
+            tokenElement.style.height = `${TOKEN_SIZE}px`;
             tokenElement.style.transform = 'translate(-50%, -50%)';
             tokenElement.style.zIndex = '1001';
             
             // Get token image
-            const roleInitial = player.role.charAt(0).toUpperCase();
             const tokenImage = document.createElement('img');
+            const roleInitial = player.role.charAt(0).toUpperCase();
             tokenImage.src = `${TOKEN_DIR}/${roleInitial}.png`;
             tokenImage.alt = `${player.name} (${player.role})`;
             tokenImage.style.width = '100%';
@@ -240,7 +211,16 @@ export function managePlayerTokens(players, playerId = null) {
             // Add error handling for token images
             tokenImage.onerror = () => {
                 console.warn(`Failed to load token image for ${player.name}, using fallback`);
-                tokenImage.src = `${TOKEN_DIR}/default.png`;
+                // Use the preloaded fallback from boardState.playerTokenImages
+                if (boardState.playerTokenImages[player.role]) {
+                    if (boardState.playerTokenImages[player.role] instanceof HTMLCanvasElement) {
+                        tokenImage.src = boardState.playerTokenImages[player.role].toDataURL();
+                    } else {
+                        tokenImage.src = boardState.playerTokenImages[player.role].src;
+                    }
+                } else {
+                    tokenImage.src = `${TOKEN_DIR}/default.png`;
+                }
             };
             
             // Create name label

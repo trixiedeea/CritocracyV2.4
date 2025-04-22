@@ -1,3 +1,28 @@
+:root {
+    --base-width: 1024;
+    --base-height: 1536;
+  }
+  
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #f0f0f0;
+  }
+  
+  #game-wrapper {
+    width: 1024px;
+    height: 1536px;
+    transform-origin: top left;
+    transform: scale(1);
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  
+
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -685,7 +710,6 @@ select, input[type="text"] {
         width: 200px;
     }
 }
-
 /* Dice Roll Animation */
 #dice-display {
     position: fixed;

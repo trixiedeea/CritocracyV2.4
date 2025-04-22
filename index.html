@@ -169,57 +169,58 @@
     <div id="game-board-screen" class="screen">
         <div id="board-container" class="game-board-container">
             <canvas id="board-canvas"></canvas>
+            <div id="player-tokens-container"></div>
+            <div id="card-container"></div>
             <div id="ui-container">
-                <div id="player-info-panel">
-                    <h2>Current Player</h2>
-                    <div id="current-player-name">-</div>
-                    <div id="resources">
-                        <div>Money: <span id="resource-money">0</span></div>
-                        <div>Knowledge: <span id="resource-knowledge">0</span></div>
-                        <div>Influence: <span id="resource-influence">0</span></div>
+                <!-- Player Info/Controls -->
+                <div id="controls">
+                    <div id="player-info-panel">
+                        <div id="current-player-info">
+                            <h3>Current Player: <span id="current-player">-</span></h3>
+                        </div>
+                        <div id="resource-display">
+                            <div class="resource">
+                                <span class="resource-label">Money:</span>
+                                <span id="resource-money">0</span>
+                            </div>
+                            <div class="resource">
+                                <span class="resource-label">Knowledge:</span>
+                                <span id="resource-knowledge">0</span>
+                            </div>
+                            <div class="resource">
+                                <span class="resource-label">Influence:</span>
+                                <span id="resource-influence">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="game-controls">
+                        <button id="roll-dice-btn" class="control-btn">Roll Dice</button>
+                        <button id="end-turn-btn" class="control-btn" disabled>End Turn</button>
                     </div>
                 </div>
                 <div id="message-log"></div>
-                <div id="controls">
-                    <button id="roll-dice-btn">Roll Dice</button>
-                    <button id="end-turn-btn" disabled>End Turn</button>
-                    <button id="use-ability-btn" disabled>Use Ability</button>
-                </div>
             </div>
         </div>
-        
-        <!-- Required popups -->
-        <div id="dice-display" class="popup" style="display: none;">
-            <div id="dice-face"></div>
-            <div id="dice-roll"></div>
+
+        <!-- Dice Animation Area -->
+        <div id="dice-animation-area" style="display: none;">
+            <div id="dice-display" class="popup">
+                <div id="dice-face" class="dice"></div>
+                <div id="dice-roll"></div>
+            </div>
         </div>
-        
+
+        <!-- Card Popup -->
         <div id="card-popup" class="popup" style="display: none;">
-            <h3 id="card-title">Card Title</h3>
-            <p id="card-description">Card description goes here.</p>
-            <div id="card-effects"></div>
-            <button id="show-card-details-btn">Show Details</button>
-            <button id="close-card-btn">Close</button>
-        </div>
-        
-        <div id="trade-prompt-modal" class="popup" style="display: none;">
-            <h3>Trade Offer</h3>
-            <p id="trade-prompt-details"></p>
-            <div id="trade-player-resources"></div>
-            <div class="trade-buttons">
-                <button id="trade-accept-btn">Accept</button>
-                <button id="trade-reject-btn">Reject</button>
+            <div class="card-content">
+                <h3 id="card-title">Card Title</h3>
+                <p id="card-description">Card description goes here.</p>
+                <div id="card-effects"></div>
+                <button id="close-card-btn">Close</button>
             </div>
-        </div>
-        
-        <div id="target-selection-modal" class="popup" style="display: none;">
-            <h3>Select Target</h3>
-            <p id="target-selection-description"></p>
-            <div id="target-player-list"></div>
-            <button id="cancel-target-btn">Cancel</button>
         </div>
     </div>
-    
+
     <!-- End Game Screen -->
     <div id="end-game-screen" class="screen">
         <div id="end-game-container">

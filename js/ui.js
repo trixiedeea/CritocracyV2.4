@@ -356,9 +356,17 @@ export function setupPlayerCountUI() {
             
             // Import setupRoleSelectionPhase dynamically to avoid circular dependency
             import('./game.js').then(game => {
-                if (game.setupRoleSelectionPhase(totalPlayers, humanPlayers)) {
+                const result = game.setupRoleSelectionPhase(totalPlayers, humanPlayers);
+                if (result.success) {
                     setupRoleSelectionUI(totalPlayers, humanPlayers);
                     showScreen('role-selection-screen');
+                    // Initialize game with the turn order
+                    game.initializeGame(result.turnOrder).then(success => {
+                        if (!success) {
+                            console.error("Failed to initialize game");
+                            alert("Error initializing game. Please check console and refresh.");
+                        }
+                    });
                 } else {
                     console.error("Failed to set up role selection phase in game logic.");
                     alert("Invalid player configuration. Please try again.");
@@ -645,11 +653,9 @@ function startGameWithSelectedRoles(playerConfigs) {
         }
         
         // Add AI players until we reach 6 total players
-        const startingId = playerConfigs.length + 1;
         for (let i = 0; i < (6 - playerConfigs.length); i++) {
             const aiRole = remainingRoles[i];
             playerConfigs.push({
-                id: startingId + i,
                 name: `AI ${i + 1}`,
                 role: aiRole,
                 isHuman: false
@@ -665,10 +671,16 @@ function startGameWithSelectedRoles(playerConfigs) {
         console.log("Resetting all player state...");
         playersModule.resetPlayers();
         
+        // Create players first
+        const playerIds = playerConfigs.map(config => {
+            const player = playersModule.createPlayer(config.name, config.role, config.isHuman);
+            return player.id;
+        });
+        
         // Now import the game module and initialize the game
         import('./game.js').then(gameModule => {
-            // Initialize the game with the player configuration
-            gameModule.initializeGame(playerConfigs).then(success => {
+            // Initialize the game with the player IDs
+            gameModule.initializeGame(playerIds).then(success => {
                 if (success) {
                     // Show game board screen if initialization successful
                     showScreen('game-board-screen');
@@ -902,7 +914,7 @@ export function updatePlayerInfo() {
     let infoHTML = '<div class="player-info-grid">';
     players.forEach(player => {
         const isCurrent = player.id === currentPlayerId;
-        const playerColor = getPlayerColor(player.role);
+        const playerColor = TOKEN_COLOR;
         const roleInfo = PLAYER_ROLES[player.role];
         
         infoHTML += `
@@ -2346,23 +2358,15 @@ export function hideDiceRollAnimation(delay = 1500) {
 }
 
 // --- Utility Functions ---
-// Helper function to get player color based on role
-function getPlayerColor(role) {
-    // Updated colors to match the PATH_COLORS from board-data.js
-    // Path colors from board-data.js:
-    // Purple: #9C54DE - Age of Expansion
-    // Blue: #1B3DE5 - Age of Resistance
-    // Cyan: #00FFFF - Age of Reckoning
-    // Pink: #FF66FF - Age of Legacy
-    const PLAYER_COLORS = {
-        HISTORIAN: '#9C54DE',   // Purple - Age of Expansion
-        REVOLUTIONARY: '#1B3DE5', // Blue - Age of Resistance
-        COLONIALIST: '#00FFFF', // Cyan - Age of Reckoning
-        ENTREPRENEUR: '#FF66FF', // Pink - Age of Legacy
-        POLITICIAN: '#8A2BE2',   // Additional color
-        ARTIST: '#FF69B4'       // Additional color
-    };
-    return PLAYER_COLORS[role] || '#808080';
+// Use a neutral token color for all players
+const TOKEN_COLOR = '#808080'; // Neutral gray for all tokens
+// Update token creation to use TOKEN_COLOR directly
+export function createPlayerTokenElement(player) {
+    const tokenElement = document.createElement('div');
+    tokenElement.id = `player-${player.id}-token`;
+    tokenElement.className = 'player-token';
+    tokenElement.style.backgroundColor = TOKEN_COLOR;
+    return tokenElement;
 }
 
 /**
@@ -2608,10 +2612,7 @@ export function hideActionCard() {
 
 // Add these styles to the page for card animations
 function addCardStyles() {
-    if (document.getElementById('card-animation-styles')) return;
-    
     const styleElement = document.createElement('style');
-    styleElement.id = 'card-animation-styles';
     styleElement.textContent = `
         #action-card-container {
             position: fixed;
@@ -2638,143 +2639,20 @@ function addCardStyles() {
             opacity: 1;
             transform: translateY(0) scale(1);
         }
-        
-        .action-card.card-exit {
-            opacity: 0;
-            transform: translateY(-20px) scale(0.95);
-            transition: opacity 0.3s ease-in, transform 0.3s ease-in;
-        }
-        
-        .card-header {
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            color: white;
-        }
-        
-        .card-icon {
-            font-size: 24px;
-            margin-right: 10px;
-        }
-        
-        .card-header h3 {
-            margin: 0;
-            font-size: 18px;
-        }
-        
-        .card-content {
-            padding: 20px;
-        }
-        
-        .card-content h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .card-message-container {
-            margin-bottom: 15px;
-            min-height: 40px;
-            line-height: 1.4;
-        }
-        
-        .player-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-radius: 5px;
-        }
-        
-        .player-token {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-        
-        .token-description {
-            margin-top: 5px;
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-        }
-        
-        .dice-result {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 15px 0;
-            font-size: 24px;
-            transition: transform 0.3s ease;
-        }
-        
-        .dice-icon {
-            margin-right: 10px;
-        }
-        
-        .result-number {
-            font-weight: bold;
-            font-size: 32px;
-        }
-        
-        .highlight-pulse {
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-        }
-        
-        .card-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .card-button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            background-color: #4a6fa5;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.2s;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: button-enter 0.5s forwards;
-        }
-        
-        .card-button:hover {
-            background-color: #3a5980;
-            transform: translateY(-2px);
-        }
-        
-        .card-button.button-clicked {
-            animation: button-click 0.3s forwards;
-        }
-        
-        @keyframes button-enter {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes button-click {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.95); }
-            100% { transform: scale(1); }
-        }
     `;
     
-    document.head.appendChild(styleElement);
+    function scaleGameToFit() {
+        const baseWidth = 1024;
+        const baseHeight = 1536;
+        const gameWrapper = document.getElementById('game-wrapper');
+        const scaleX = window.innerWidth / baseWidth;
+        const scaleY = window.innerHeight / baseHeight;
+        const scale = Math.min(scaleX, scaleY);
+        gameWrapper.style.transform = `scale(${scale})`;
+    }
+    
+    window.addEventListener('resize', scaleGameToFit);
+    window.addEventListener('load', scaleGameToFit);
 }
 
 // Add the styles when the file loads
@@ -3483,7 +3361,7 @@ export function createPlayerTokenElements() {
             const tokenElement = document.createElement('div');
             tokenElement.id = `player-${player.id}-token`;
             tokenElement.className = 'player-token';
-            tokenElement.style.backgroundColor = getPlayerColor(player.role);
+            tokenElement.style.backgroundColor = TOKEN_COLOR;
             
             // Add player name and role
             const playerInfo = document.createElement('div');

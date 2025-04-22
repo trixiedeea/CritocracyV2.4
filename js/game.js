@@ -8,14 +8,15 @@ import {
     getPlayerRanking,
     grantTemporaryImmunity, decrementImmunityTurns, 
     decrementTradeBlockTurns,
-    useSpecialAbility
+    useSpecialAbility,
+    createPlayer
 } from './players.js';
 import { 
     setupBoard, getNextStepOptions, 
     startMoveAnimation, highlightPlayerChoices, getPathColorFromCoords,
     highlightEndOfTurnCardBoxes, refreshPlayerTokens,
     synchronizePlayerCoordinates, findSpaceDetailsByCoords,
-    getScreenCoordinates
+    drawBoard, managePlayerTokens
 } from './board.js';
 import { 
     setupDecks, drawCard, 
@@ -87,8 +88,9 @@ function promptForJunctionChoice(options, callback) {
     
     // Set up a one-time click handler for the board
     const handleBoardClick = (event) => {
-        const coords = getScreenCoordinates(event);
-        if (!coords) return;
+        const rect = event.target.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
         
         // Find the closest choice to the click
         let closestChoice = null;
@@ -96,8 +98,8 @@ function promptForJunctionChoice(options, callback) {
         
         options.forEach(option => {
             const distance = Math.sqrt(
-                Math.pow(option.coords.x - coords.x, 2) + 
-                Math.pow(option.coords.y - coords.y, 2)
+                Math.pow(option.coords.x - x, 2) + 
+                Math.pow(option.coords.y - y, 2)
             );
             
             if (distance < minDistance) {
@@ -181,12 +183,8 @@ export async function initializeGame(turnOrder) {
     logMessage("Setting up new game...");
 
     try {
-        // Reset modules
+        // Reset players and game state
         resetPlayers();
-        await setupBoard(); // Only sets up the tracking, doesn't draw visible elements
-        await setupDecks();
-
-        // Reset internal game state
         gameState = {
             started: false,
             ended: false,
@@ -195,52 +193,50 @@ export async function initializeGame(turnOrder) {
             totalPlayerCount: 0,
             humanPlayerCount: 0,
             currentPlayerIndex: -1,
-            turnOrder: turnOrder, // Use the turn order provided by the UI
+            turnOrder: [],
             pendingActionData: null,
             currentDiceRoll: 0
         };
-        
-        // Validate turn order
-        if (!turnOrder || turnOrder.length === 0) {
-            throw new Error("Turn order is required to initialize the game.");
+
+        // Set up the board and decks
+        await setupBoard();
+        await setupDecks();
+
+        // Create players based on turn order
+        if (Array.isArray(turnOrder) && turnOrder.length > 0) {
+            for (const playerConfig of turnOrder) {
+                const player = createPlayer(
+                    playerConfig.name,
+                    playerConfig.role,
+                    playerConfig.isHuman
+                );
+                if (player) {
+                    gameState.players.push(player);
+                }
+            }
         }
-        
-        // Get players from the turn order
-        const players = turnOrder.map(id => getPlayerById(id));
-        if (players.some(p => !p)) {
-            throw new Error("Invalid player IDs in turn order");
-        }
-        
-        console.log("Players initialized:", players.map(p => `${p.name} (${p.role})`));
 
-        // Initialize the logging system with the players
-        initLogging(players);
-        
-        // Log the game initialization
-        logGameEvent('GAME_INITIALIZED', { 
-            playerCount: players.length,
-            turnOrder: turnOrder
-        });
+        // Set game state
+        gameState.started = true;
+        gameState.currentPhase = 'PLAYER_TURN';
+        gameState.currentPlayerIndex = 0;
+        gameState.turnOrder = gameState.players.map(p => p.id);
 
-        gameState.currentPlayerId = gameState.turnOrder[0];
-        gameState.gamePhase = 'PLAYING';
-        
-        console.log(`Game starting. First player: ${getPlayerById(gameState.currentPlayerId)?.name}`);
-
-        clearMessages();
+        // Update UI
+        updateGameComponents();
         updatePlayerInfo();
-        // Board and player visualization is handled by HTML
-        // No need to call drawBoard() or drawPlayers()
 
-        prepareTurnForPlayer(getPlayerById(gameState.currentPlayerId));
-        
-        logMessage("Game initialization complete.");
+        // Draw initial board state
+        drawBoard();
+
+        // Create and position player tokens
+        const players = getPlayers();
+        managePlayerTokens(players);
+
+        console.log("Game initialized successfully");
         return true;
-
     } catch (error) {
-        console.error('Error initializing game:', error);
-        logMessage(`Error initializing game: ${error.message}`);
-        gameState.gamePhase = 'SETUP';
+        console.error("Error initializing game:", error);
         return false;
     }
 }
@@ -1709,47 +1705,69 @@ function animateTokenToPosition(player, coords, duration, callback) {
 
 /**
  * Sets up the role selection phase and assigns random turn order
- * @param {Array} players - Array of player objects
+ * @returns {Object} Object containing success status and turn order
  */
-export function setupRoleSelectionPhase(players) {
+export function setupRoleSelectionPhase() {
     console.log("Setting up role selection phase...");
     
-    // First, log and display all players and their types
+    // Reset any existing players
+    resetPlayers();
+    
+    // Create exactly 6 players, one for each role
+    const roles = ["HISTORIAN", "POLITICIAN", "REVOLUTIONARY", "COLONIALIST", "ENTREPRENEUR", "ARTIST"];
+    const players = [];
+    
+    // Create the human player first
+    const humanPlayer = createPlayer("Player 1", roles[0], true);
+    if (!humanPlayer) {
+        console.error("Failed to create human player");
+        return { success: false };
+    }
+    players.push(humanPlayer);
+    
+    // Create the remaining 5 AI players
+    for (let i = 1; i < 6; i++) {
+        const aiPlayer = createPlayer(`AI ${i}`, roles[i], false);
+        if (aiPlayer) {
+            players.push(aiPlayer);
+        }
+    }
+    
+    if (players.length !== 6) {
+        console.error(`Failed to create all players. Expected 6, got ${players.length}`);
+        return { success: false };
+    }
+    
+    // Log players
     logMessage("Players in the game:");
     players.forEach(player => {
         const playerType = player.isHuman ? "Human" : "AI";
-        logMessage(`${player.name} (${playerType})`);
+        logMessage(`${player.name} (${playerType}) - ${player.role}`);
     });
     
-    // Create a copy of the players array to avoid modifying the original
-    const shuffledPlayers = [...players];
-    
-    // Fisher-Yates shuffle algorithm for random ordering
-    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
-    }
-    
-    // Set the turn order in game state
-    gameState.turnOrder = shuffledPlayers.map(player => player.id);
+    // Create turn order
+    const turnOrder = players.map(player => player.id);
     
     // Update the game state
     gameState.currentPhase = 'ROLE_SELECTION';
-    gameState.currentPlayerId = gameState.turnOrder[0];
+    gameState.currentPlayerId = turnOrder[0];
     
-    // Log the game event with player information
+    // Log the game event
     logGameEvent('TURN_ORDER_SET', {
-        turnOrder: gameState.turnOrder.map(id => {
+        turnOrder: turnOrder.map(id => {
             const player = getPlayerById(id);
             return {
                 id,
                 name: player?.name,
+                role: player?.role,
                 isHuman: player?.isHuman
             };
         })
     });
     
-    // Update UI to show player information
+    // Update UI
     updateGameControls();
     updatePlayerInfo();
+    
+    return { success: true, turnOrder };
 }
