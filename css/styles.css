@@ -497,7 +497,7 @@ select, input[type="text"] {
   
 #board-canvas {
     max-width: 100%;
-    max-height: 100%;
+    max-height: 100dvh;
     object-fit: contain; /* Maintain aspect ratio */
 }
 

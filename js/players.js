@@ -109,8 +109,8 @@ export const createPlayer = (name, role, isHuman = false) => {
     }
     
     const startCoords = {
-        x: START_SPACE.coordinates[0][0],
-        y: START_SPACE.coordinates[0][1]
+        x: START_SPACE.coordinates[0],
+        y: START_SPACE.coordinates[1]
     };
     
     const player = {

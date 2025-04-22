@@ -280,8 +280,8 @@ function prepareTurnForPlayer(player) {
         return;
     }
 
-    const startX = START_SPACE.coordinates[0][0];
-    const startY = START_SPACE.coordinates[0][1];
+    const startX = START_SPACE.coordinates[0];
+    const startY = START_SPACE.coordinates[1];
     if (player.coords.x === startX && player.coords.y === startY) {
         console.log(`${player.name} is at Start. Needs to choose a path.`);
         logMessage(`${player.name}, choose your starting path.`);

@@ -171,11 +171,11 @@ const drawPathSpaces = () => {
     };
 
     // Draw spaces for tracking purposes (invisible)
-    if (START_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(START_SPACE.coordinates[0][0], START_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    if (START_SPACE?.coordinates) {
+        drawScaledPoint(START_SPACE.coordinates[0], START_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
     }
-    if (FINISH_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    if (FINISH_SPACE?.coordinates) {
+        drawScaledPoint(FINISH_SPACE.coordinates[0], FINISH_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
     }
 
     // Draw spaces for tracking purposes (invisible)
@@ -420,37 +420,33 @@ export const findSpaceDetailsByCoords = (targetCoords, tolerance = 5) => {
     
     // Check START_SPACE
     if (START_SPACE && START_SPACE.coordinates) {
-        for (const coord of START_SPACE.coordinates) {
-            const distance = Math.sqrt(
-                Math.pow(targetCoords.x - coord[0], 2) + 
-                Math.pow(targetCoords.y - coord[1], 2)
-            );
-            
-            if (distance <= tolerance) {
-                return {
-                    type: 'start',
-                    coords: { x: coord[0], y: coord[1] },
-                    details: START_SPACE
-                };
-            }
+        const distance = Math.sqrt(
+            Math.pow(targetCoords.x - START_SPACE.coordinates[0], 2) + 
+            Math.pow(targetCoords.y - START_SPACE.coordinates[1], 2)
+        );
+        
+        if (distance <= tolerance) {
+            return {
+                type: 'start',
+                coords: { x: START_SPACE.coordinates[0], y: START_SPACE.coordinates[1] },
+                details: START_SPACE
+            };
         }
     }
     
     // Check FINISH_SPACE
     if (FINISH_SPACE && FINISH_SPACE.coordinates) {
-        for (const coord of FINISH_SPACE.coordinates) {
-            const distance = Math.sqrt(
-                Math.pow(targetCoords.x - coord[0], 2) + 
-                Math.pow(targetCoords.y - coord[1], 2)
-            );
-            
-            if (distance <= tolerance) {
-                return {
-                    type: 'finish',
-                    coords: { x: coord[0], y: coord[1] },
-                    details: FINISH_SPACE
-                };
-            }
+        const distance = Math.sqrt(
+            Math.pow(targetCoords.x - FINISH_SPACE.coordinates[0], 2) + 
+            Math.pow(targetCoords.y - FINISH_SPACE.coordinates[1], 2)
+        );
+        
+        if (distance <= tolerance) {
+            return {
+                type: 'finish',
+                coords: { x: FINISH_SPACE.coordinates[0], y: FINISH_SPACE.coordinates[1] },
+                details: FINISH_SPACE
+            };
         }
     }
     
@@ -591,29 +587,25 @@ export const getPathColorFromCoords = (x, y) => {
     
     // Check if it's the start space
     if (START_SPACE && START_SPACE.coordinates) {
-        for (const coord of START_SPACE.coordinates) {
-            const distance = Math.sqrt(
-                Math.pow(coordinates.x - coord[0], 2) + 
-                Math.pow(coordinates.y - coord[1], 2)
-            );
-            
-            if (distance <= 5) {
-                return 'start'; // Special color for start
-            }
+        const distance = Math.sqrt(
+            Math.pow(coordinates.x - START_SPACE.coordinates[0], 2) + 
+            Math.pow(coordinates.y - START_SPACE.coordinates[1], 2)
+        );
+        
+        if (distance <= 5) {
+            return 'start'; // Special color for start
         }
     }
     
     // Check if it's the finish space
     if (FINISH_SPACE && FINISH_SPACE.coordinates) {
-        for (const coord of FINISH_SPACE.coordinates) {
-            const distance = Math.sqrt(
-                Math.pow(coordinates.x - coord[0], 2) + 
-                Math.pow(coordinates.y - coord[1], 2)
-            );
-            
-            if (distance <= 5) {
-                return 'finish'; // Special color for finish
-            }
+        const distance = Math.sqrt(
+            Math.pow(coordinates.x - FINISH_SPACE.coordinates[0], 2) + 
+            Math.pow(coordinates.y - FINISH_SPACE.coordinates[1], 2)
+        );
+        
+        if (distance <= 5) {
+            return 'finish'; // Special color for finish
         }
     }
     
@@ -881,11 +873,11 @@ export const drawBoard = () => {
     };
 
     // Draw spaces for tracking purposes (invisible)
-    if (START_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(START_SPACE.coordinates[0][0], START_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    if (START_SPACE?.coordinates) {
+        drawScaledPoint(START_SPACE.coordinates[0], START_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
     }
-    if (FINISH_SPACE?.coordinates?.[0]) {
-        drawScaledPoint(FINISH_SPACE.coordinates[0][0], FINISH_SPACE.coordinates[0][1], 'rgba(0, 0, 0, 0)', 5);
+    if (FINISH_SPACE?.coordinates) {
+        drawScaledPoint(FINISH_SPACE.coordinates[0], FINISH_SPACE.coordinates[1], 'rgba(0, 0, 0, 0)', 5);
     }
 
     // Draw spaces for tracking purposes (invisible)
