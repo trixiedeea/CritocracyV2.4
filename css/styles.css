@@ -473,13 +473,14 @@ select, input[type="text"] {
     width: 100vw;
     overflow: auto; /* allow screen overflow */
     background-color: black;
-    padding: 0; /* Remove padding */
-    justify-content: flex-start; /* Align to top */
+    padding: 0;
+    justify-content: center; /* Center the board */
+    align-items: center; /* Center horizontally */
 }
 
 /* Container for the board image/canvas */
 #board-container {
-    flex: 1; /* Take up all available space */
+    height: 100%;
     width: 100%;
     position: relative;
     overflow: auto; /* allow board overflow */
@@ -493,9 +494,10 @@ select, input[type="text"] {
 }
   
 #board-canvas {
+    object-fit: contain;
     max-width: 100%;
-    max-height: 100dvh;
-    object-fit: contain; /* Maintain aspect ratio */
+    max-height: 100%;
+    aspect-ratio: 1536 / 1024; /* Maintain exact aspect ratio */
 }
 
 #player-info-panel {
