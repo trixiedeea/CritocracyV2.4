@@ -298,6 +298,28 @@ select, input[type="text"] {
     margin-top: 10px;
 }
 
+.confirm-button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.confirm-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.confirm-btn:hover {
+    background-color: #45a049;
+}
+
+
 /* Board spaces and paths - make transparent by default */
 .board-space {
     opacity: 0;
