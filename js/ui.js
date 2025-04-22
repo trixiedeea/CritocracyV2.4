@@ -400,16 +400,20 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 );
                 
                 // Add AI players with random roles from remaining
-                for (let i = 1; i < totalPlayers; i++) {
+                // Make sure we only add enough AI players to reach totalPlayers (not beyond)
+                const aiPlayersToAdd = totalPlayers - 1; // Subtract 1 for the human player
+                for (let i = 0; i < aiPlayersToAdd && i < remainingRoles.length; i++) {
                     const randomIndex = Math.floor(Math.random() * remainingRoles.length);
                     const aiRole = remainingRoles.splice(randomIndex, 1)[0];
                     
                     playerConfigs.push({
-                        name: `AI ${i}`,
+                        name: `AI ${i+1}`,
                         role: aiRole,
                         isHuman: false
                     });
                 }
+                
+                console.log(`Creating game with ${playerConfigs.length} players (${totalPlayers} expected)`);
                 
                 // Start the game with the selected roles
                 initializeGame(playerConfigs).then(success => {

@@ -3,67 +3,33 @@
 
 // ===== Imports =====
 import { 
-    // Only import what's needed from board.js
-    setupBoard,
-    highlightPlayerChoices,
-    getNextStepOptions,
-    getPathColorFromCoords,
-    startMoveAnimation,
-    highlightEndOfTurnCardBoxes
-} from './board.js';
-import { 
-    START_SPACE,
-    FINISH_SPACE,
-    PATH_COLORS
-} from './board-data.js';
-import { 
-    setupDecks, 
-    drawCard, 
-    applyCardEffects,
-    DECK_TYPES,
-    logCardDraw,
-    getDeckTypeForSpace
-} from './cards.js';
-import { 
-    createPlayer, 
-    updatePlayerResources, 
-    markPlayerFinished, 
+    resetPlayers, getPlayers, createPlayer, getPlayerById, 
+    updatePlayerResources, markPlayerFinished, 
     getPlayerRanking,
-    getPlayers, 
-    PLAYER_ROLES, 
-    resetPlayers,
-    grantTemporaryImmunity,
+    grantTemporaryImmunity, decrementImmunityTurns, 
     decrementTradeBlockTurns,
-    getPlayerById,
-    decrementImmunityTurns,
     useSpecialAbility
 } from './players.js';
-
-// Direct UI imports - don't import drawing functions
 import { 
-    showEndGameScreen, 
-    updatePlayerInfo, 
-    updateGameControls,
-    promptForTradeResponse,
-    logMessage,
-    clearMessages,
-    hideDiceRollAnimation,
-    highlightChoices,
-    clearHighlights,
-    showCardPopup,
-    updateGameComponents,
-    animatePlayerMovement,
-    highlightDeck,
-    showScreen
-} from './ui.js';
-
-// Import logging system
+    setupBoard, getNextStepOptions, 
+    startMoveAnimation, highlightPlayerChoices, getPathColorFromCoords
+} from './board.js';
+import { 
+    setupDecks, drawCard, 
+    applyCardEffects, getDeckTypeForSpace, DECK_TYPES
+} from './cards.js';
+import { START_SPACE, FINISH_SPACE, PATH_COLORS } from './board-data.js';
 import {
-    initLogging,
-    logGameEvent,
-    logPlayerAction,
-    logTurnStart,
-    logTurnEnd
+    logMessage, updatePlayerInfo, clearMessages, 
+    updateGameControls, showCardPopup, promptForTradeResponse,
+    hideDiceRollAnimation, updateGameComponents,
+    clearHighlights, showScreen, highlightChoices,
+    showEndGameScreen, animatePlayerMovement, highlightDeck,
+    highlightEndOfTurnCardBoxes
+} from './ui.js';
+import {
+    initLogging, logGameEvent, logPlayerAction, 
+    logTurnStart, logCardDraw, logTurnEnd
 } from './logging.js';
 
 // Create a global game handlers object for board interactions
@@ -148,6 +114,7 @@ export async function initializeGame(playerConfigs) {
         const assignedRoles = new Set();
 
         // Add explicitly defined players (human and potentially pre-defined CPUs)
+        console.log(`Attempting to add ${playerConfigs.length} players from config`);
         for (const config of playerConfigs) {
             if (assignedRoles.has(config.role)) {
                 console.warn(`Skipping player config for ${config.name}: Role ${config.role} already assigned.`);
@@ -156,46 +123,23 @@ export async function initializeGame(playerConfigs) {
             const player = createPlayer(config.name, config.role, config.isHuman);
             if (player) {
                 addedPlayerIds.push(player.id);
-                assignedRoles.add(player.role);
+                assignedRoles.add(config.role);
+                console.log(`Added player: ${config.name} (${config.role}), Human: ${config.isHuman}`);
             } else {
                 console.error(`Failed to add configured player: ${config.name} (${config.role})`);
             }
         }
 
-        // --- Assign Roles/Names to remaining CPU slots if needed ---
+        // The totalPlayerCount is exactly what's in the playerConfigs
         const totalPlayerCount = playerConfigs.length;
-        const cpusToAdd = totalPlayerCount - getPlayers().length;
-
-        if (cpusToAdd > 0) {
-            console.log(`Assigning roles/names for ${cpusToAdd} additional CPU players...`);
-            const availableRoles = Object.keys(PLAYER_ROLES).filter(role => !assignedRoles.has(role));
-            
-            for (let i = availableRoles.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [availableRoles[i], availableRoles[j]] = [availableRoles[j], availableRoles[i]];
-            }
-
-            for (let i = 0; i < cpusToAdd; i++) {
-                if (availableRoles.length === 0) {
-                    console.error("Ran out of available roles while assigning CPUs!");
-                    break; 
-                }
-                const cpuRole = availableRoles.pop();
-                
-                let cpuName = `CPU (${cpuRole.substring(0,3)})`;
-                const cpuPlayer = createPlayer(cpuName, cpuRole, false);
-                if (cpuPlayer) {
-                    addedPlayerIds.push(cpuPlayer.id);
-                    assignedRoles.add(cpuRole);
-                } else {
-                    console.error(`Failed to add CPU player ${cpuName} with role ${cpuRole}.`);
-                }
-            }
+        
+        // We should not need to add any additional CPU players automatically
+        // since the UI should have created all needed player configs
+        const currentPlayerCount = getPlayers().length;
+        if (currentPlayerCount !== totalPlayerCount) {
+            throw new Error(`Failed to initialize correct number of players. Expected ${totalPlayerCount}, got ${currentPlayerCount}`);
         }
-
-        if (getPlayers().length !== totalPlayerCount) {
-            throw new Error(`Failed to initialize correct number of players. Expected ${totalPlayerCount}, got ${getPlayers().length}`);
-        }
+        
         console.log("Players initialized:", getPlayers().map(p => `${p.name} (${p.role})`));
 
         // Initialize the logging system with the players
