@@ -76,36 +76,21 @@ const loadTokenImages = async () => {
         
         img.onerror = () => {
             console.warn(`Failed to load token image for ${role}: ${TOKEN_DIR}/${token}`);
-            // Create a fallback colored circle
-            const fallbackCanvas = document.createElement('canvas');
-            fallbackCanvas.width = 40;
-            fallbackCanvas.height = 40;
-            const ctx = fallbackCanvas.getContext('2d');
-            // Use role-specific colors for fallback
-            let color = '#FF0000';
-            switch(role) {
-                case 'HISTORIAN': color = '#9C54DE'; break;
-                case 'REVOLUTIONARY': color = '#1B3DE5'; break;
-                case 'COLONIALIST': color = '#00FFFF'; break;
-                case 'ENTREPRENEUR': color = '#FF66FF'; break;
-                case 'POLITICIAN': color = '#8A2BE2'; break;
-                case 'ARTIST': color = '#FF69B4'; break;
-            }
+            // Use default token instead of creating a canvas fallback
+            const defaultImg = new Image();
+            defaultImg.onload = () => {
+                console.log(`Using default token image for ${role}`);
+                boardState.playerTokenImages[role] = defaultImg;
+                resolve();
+            };
             
-            // Draw colored circle with first letter
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(20, 20, 18, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 24px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(role.charAt(0), 20, 20);
+            defaultImg.onerror = () => {
+                console.error(`Failed to load default token image for ${role}`);
+                resolve(); // Resolve anyway to avoid hanging
+            };
             
-            // Use this as fallback
-            boardState.playerTokenImages[role] = fallbackCanvas;
-            resolve();
+            // Use a default token image from assets folder
+            defaultImg.src = `${TOKEN_DIR}/default.png?nocache=${Date.now()}`;
         };
         
         // Ensure path is correct and add cache-busting
