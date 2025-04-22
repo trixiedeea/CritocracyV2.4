@@ -435,19 +435,14 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 
                 // For single player mode, we only need 1 player (the human player)
                 // Don't add any AI players if we're in single player mode
-                console.log(`Single player mode selected - initialization will be handled by the Roll Dice button`);
+                console.log(`Single player mode selected - initializing game directly`);
                 
-                // Just switch to the turn order screen, actual initialization happens when Roll Dice is clicked
-                showScreen('turn-order-screen');
-                
-                // Set up the turn order screen content
-                const turnOrderContainer = document.getElementById('turn-order-container');
-                if (turnOrderContainer) {
-                    turnOrderContainer.innerHTML = `
-                        <h3>Your selected role: ${selectedRole.toUpperCase()}</h3>
-                        <p>Click "Roll Dice" to determine turn order and start the game</p>
-                    `;
-                }
+                // Start game immediately with the single player configuration
+                startGameWithSelectedRoles([{
+                    name: "Player 1", 
+                    role: selectedRole.toUpperCase(),
+                    isHuman: true
+                }]);
             });
         }
         
@@ -602,26 +597,8 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 });
             }
             
-            // Store player configs in session storage for the HTML initialization flow
-            sessionStorage.setItem('playerConfigs', JSON.stringify(playerConfigs));
-            
-            // Just switch to the turn order screen, actual initialization happens when Roll Dice is clicked
-            showScreen('turn-order-screen');
-            
-            // Set up the turn order screen content
-            const turnOrderContainer = document.getElementById('turn-order-container');
-            if (turnOrderContainer) {
-                const humanPlayerInfo = playerConfigs
-                    .filter(config => config.isHuman)
-                    .map(config => `<p>${config.name}: ${config.role}</p>`)
-                    .join('');
-                
-                turnOrderContainer.innerHTML = `
-                    <h3>Selected Roles:</h3>
-                    ${humanPlayerInfo}
-                    <p>Click "Roll Dice" to determine turn order and start the game</p>
-                `;
-            }
+            // Start game immediately with the player configurations
+            startGameWithSelectedRoles(playerConfigs);
         });
     }
 }
