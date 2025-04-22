@@ -1026,7 +1026,7 @@ export const setupBoard = async () => {
                     resolve();
                 };
                 
-                boardState.boardImage.src = "assets/images/game-board.jpg";
+                boardState.boardImage.src = "assets/board.png";
             });
         }
     } catch (err) {
