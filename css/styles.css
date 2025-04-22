@@ -214,8 +214,7 @@ select, input[type="text"] {
 
 /* Player count and role selection screens */
 #player-count-screen h2, 
-#role-selection-screen h2, 
-#turn-order-screen h2 {
+#role-selection-screen h2 {
     color: #003017;
     margin-bottom: 20px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
@@ -317,7 +316,6 @@ select, input[type="text"] {
 .confirm-btn:hover {
     background-color: #45a049;
 }
-
 
 /* Board spaces and paths - make transparent by default */
 .board-space {

@@ -165,16 +165,6 @@
          </div>
     </div>
 
-    <!-- Turn Order Screen -->
-    <div id="turn-order-screen" class="screen">
-        <div class="screen-content">
-            <h2>Roll for Turn Order</h2>
-            <div id="turn-order-container"></div>
-            <button id="roll-turn-order-btn" class="action-btn">Roll Dice</button>
-            <div id="turn-order-results"></div>
-        </div>
-    </div>
-
     <!-- Game Board Screen -->
     <div id="game-board-screen" class="screen">
         <div id="board-container" class="game-board-container">
@@ -346,101 +336,92 @@
                         // Store the selected role data in sessionStorage for later use
                         sessionStorage.setItem('selectedRole', roleData);
                         
-                        // Transition to turn order screen first
-                        showScreen('turn-order-screen');
-                        
-                        // Set up the turn order screen content
-                        const turnOrderContainer = document.getElementById('turn-order-container');
-                        if (turnOrderContainer) {
-                            turnOrderContainer.innerHTML = `
-                                <h3>Your selected role: ${roleData}</h3>
-                                <p>Click "Roll Dice" to determine turn order</p>
-                            `;
+                        // Only initialize the game if not already in progress
+                        if (gameInitializing) {
+                            console.log("Game initialization already in progress, ignoring click");
+                            return;
                         }
                         
-                        // Set up the roll turn order button
-                        const rollTurnOrderBtn = document.getElementById('roll-turn-order-btn');
-                        if (rollTurnOrderBtn) {
-                            // Remove existing event listeners by cloning
-                            const newBtn = rollTurnOrderBtn.cloneNode(true);
-                            rollTurnOrderBtn.parentNode.replaceChild(newBtn, rollTurnOrderBtn);
-                            
-                            newBtn.addEventListener('click', function() {
-                                // Only initialize the game if not already in progress
-                                if (gameInitializing) {
-                                    console.log("Game initialization already in progress, ignoring click");
-                                    return;
+                        // Set flag to prevent multiple initializations
+                        gameInitializing = true;
+                        this.disabled = true;
+                        this.textContent = "Initializing...";
+                        
+                        // Reset modules before initialization
+                        Promise.all([
+                            import('./js/players.js').then(playersModule => {
+                                console.log("Resetting all player state...");
+                                playersModule.resetPlayers();
+                            })
+                        ]).then(() => {
+                            // Now import the game module and initialize the game
+                            import('./js/game.js').then(gameModule => {
+                                // Check if we have player configs in session storage (from multi-player setup)
+                                let playerConfigs;
+                                const savedConfigs = sessionStorage.getItem('playerConfigs');
+                                
+                                if (savedConfigs) {
+                                    // Use the stored configs from multi-player setup
+                                    try {
+                                        playerConfigs = JSON.parse(savedConfigs);
+                                        console.log("Using stored player configurations:", playerConfigs);
+                                    } catch (e) {
+                                        console.error("Error parsing stored player configs:", e);
+                                        playerConfigs = null;
+                                    }
                                 }
                                 
-                                // Set flag to prevent multiple initializations
-                                gameInitializing = true;
-                                this.disabled = true;
-                                this.textContent = "Initializing...";
+                                // If no stored configs, create a single player config with the selected role
+                                if (!playerConfigs) {
+                                    // Create player configurations with the selected role
+                                    playerConfigs = [{
+                                        name: "Player 1", 
+                                        role: roleData,
+                                        isHuman: true
+                                    }];
+                                    console.log("Using default single player configuration:", playerConfigs);
+                                }
                                 
-                                // Reset modules before initialization
-                                Promise.all([
-                                    import('./js/players.js').then(playersModule => {
-                                        console.log("Resetting all player state...");
-                                        playersModule.resetPlayers();
-                                    })
-                                ]).then(() => {
-                                    // Now import the game module and initialize the game
-                                    import('./js/game.js').then(gameModule => {
-                                        // Check if we have player configs in session storage (from multi-player setup)
-                                        let playerConfigs;
-                                        const savedConfigs = sessionStorage.getItem('playerConfigs');
-                                        
-                                        if (savedConfigs) {
-                                            // Use the stored configs from multi-player setup
-                                            try {
-                                                playerConfigs = JSON.parse(savedConfigs);
-                                                console.log("Using stored player configurations:", playerConfigs);
-                                            } catch (e) {
-                                                console.error("Error parsing stored player configs:", e);
-                                                playerConfigs = null;
-                                            }
-                                        }
-                                        
-                                        // If no stored configs, create a single player config with the selected role
-                                        if (!playerConfigs) {
-                                            // Create player configurations with the selected role
-                                            playerConfigs = [{
-                                                name: "Player 1", 
-                                                role: roleData,
-                                                isHuman: true
-                                            }];
-                                            console.log("Using default single player configuration:", playerConfigs);
-                                        }
-                                        
-                                        // Clear the session storage to prevent reusing these configs
-                                        sessionStorage.removeItem('playerConfigs');
-                                        
-                                        // Initialize the game with the player configuration
-                                        gameModule.initializeGame(playerConfigs).then(success => {
-                                            if (success) {
-                                                // Show game board screen if initialization successful
-                                                showScreen('game-board-screen');
-                                            } else {
-                                                alert("Failed to start the game. Please try again.");
-                                                gameInitializing = false;
-                                                this.disabled = false;
-                                                this.textContent = "Roll Dice";
-                                            }
-                                        }).catch(err => {
-                                            console.error("Game initialization error:", err);
-                                            alert("An error occurred initializing the game.");
-                                            gameInitializing = false;
-                                            this.disabled = false;
-                                            this.textContent = "Roll Dice";
-                                        });
-                                    });
+                                // Clear the session storage to prevent reusing these configs
+                                sessionStorage.removeItem('playerConfigs');
+                                
+                                // Shuffle the player configs to randomize turn order
+                                playerConfigs = shuffleArray(playerConfigs);
+                                
+                                // Initialize the game with the player configuration
+                                gameModule.initializeGame(playerConfigs).then(success => {
+                                    if (success) {
+                                        // Show game board screen if initialization successful
+                                        showScreen('game-board-screen');
+                                    } else {
+                                        alert("Failed to start the game. Please try again.");
+                                        gameInitializing = false;
+                                        this.disabled = false;
+                                        this.textContent = "Confirm";
+                                    }
+                                }).catch(err => {
+                                    console.error("Game initialization error:", err);
+                                    alert("An error occurred initializing the game.");
+                                    gameInitializing = false;
+                                    this.disabled = false;
+                                    this.textContent = "Confirm";
                                 });
                             });
-                        }
+                        });
                     });
                 }
             }, 200); // Small delay to ensure elements are fully rendered
         });
+        
+        // Function to shuffle an array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
     </script>
 </body>
 </html> 

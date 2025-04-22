@@ -1,5 +1,4 @@
 import {    
-    initializeGame, // For starting game from setup UI
     handlePlayerAction, // For Roll, End Turn, Ability buttons
     getGameState, // For checking current state in UI
     resolvePlayerChoice, // For handling validated clicks on choices
@@ -44,7 +43,6 @@ const elements = {
         startScreen: document.getElementById('start-screen'),
         playerCountScreen: document.getElementById('player-count-screen'),
         roleSelectionScreen: document.getElementById('role-selection-screen'),
-        turnOrderScreen: document.getElementById('turn-order-screen'),
         gameBoardScreen: document.getElementById('game-board-screen'),
         endGameScreen: document.getElementById('end-game-screen')
     },
@@ -192,7 +190,49 @@ function setupEventListeners() {
 
     if (elements.playerConfig.roleConfirm) {
         addListener(elements.playerConfig.roleConfirm, 'click', () => {
-            startGameWithSelectedRoles();
+            // Get selected role
+            const selectedCard = document.querySelector('.role-card.selected, .grid-item.selected');
+            if (!selectedCard) {
+                alert("Please select a role first!");
+                return;
+            }
+            
+            const roleButton = selectedCard.querySelector('.role-select');
+            if (!roleButton) {
+                alert("Error getting selected role. Please try again.");
+                return;
+            }
+            
+            const selectedRole = roleButton.getAttribute('data-role');
+            
+            // Create player configurations
+            const playerConfigs = [];
+            
+            // Add human player with selected role
+            playerConfigs.push({
+                name: "Player 1", 
+                role: selectedRole.toUpperCase(),
+                isHuman: true
+            });
+            
+            // Add AI players with random roles
+            const availableRoles = Object.keys(PLAYER_ROLES)
+                .filter(role => role.toUpperCase() !== selectedRole.toUpperCase());
+            
+            // Add 5 AI players (to make a total of 6 players)
+            for (let i = 0; i < 5; i++) {
+                const randomIndex = Math.floor(Math.random() * availableRoles.length);
+                const aiRole = availableRoles.splice(randomIndex, 1)[0];
+                
+                playerConfigs.push({
+                    name: `AI ${i + 1}`,
+                    role: aiRole.toUpperCase(),
+                    isHuman: false
+                });
+            }
+            
+            // Start the game with these player configurations
+            startGameWithSelectedRoles(playerConfigs);
         });
     }
 
@@ -634,28 +674,40 @@ function startGameWithSelectedRoles(playerConfigs) {
         }
     }
     
-    console.log("Final player configurations:", playerConfigs);
+    // Shuffle the player configs to randomize turn order
+    playerConfigs = shuffleArray(playerConfigs);
     
-    // Check for duplicate roles (should be handled earlier for human players)
-    const roles = playerConfigs.map(player => player.role);
-    const uniqueRoles = new Set(roles);
-    if (uniqueRoles.size !== roles.length) {
-        console.warn("Duplicate roles detected. Each role should be unique, but this is allowed for AI players.");
-    }
-    
-    // Initialize the game with these configurations
-    initializeGame(playerConfigs).then(success => {
-        if (success) {
-            console.log("Game initialized successfully!");
-            showScreen('game-board-screen');
-        } else {
-            console.error("Failed to initialize game");
-            alert("There was an error starting the game. Please try again.");
-        }
-    }).catch(error => {
-        console.error("Error initializing game:", error);
-        alert("There was an error starting the game. Please try again.");
+    // Reset modules before initialization
+    import('./players.js').then(playersModule => {
+        console.log("Resetting all player state...");
+        playersModule.resetPlayers();
+        
+        // Now import the game module and initialize the game
+        import('./game.js').then(gameModule => {
+            // Initialize the game with the player configuration
+            gameModule.initializeGame(playerConfigs).then(success => {
+                if (success) {
+                    // Show game board screen if initialization successful
+                    showScreen('game-board-screen');
+                } else {
+                    alert("Failed to start the game. Please try again.");
+                }
+            }).catch(err => {
+                console.error("Game initialization error:", err);
+                alert("An error occurred initializing the game.");
+            });
+        });
     });
+}
+
+// Helper function to shuffle an array (Fisher-Yates algorithm)
+function shuffleArray(array) {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
 }
 
 // --- Canvas Click Handling (Update element access) ---
