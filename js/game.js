@@ -12,7 +12,8 @@ import {
 } from './players.js';
 import { 
     setupBoard, getNextStepOptions, 
-    startMoveAnimation, highlightPlayerChoices, getPathColorFromCoords
+    startMoveAnimation, highlightPlayerChoices, getPathColorFromCoords,
+    highlightEndOfTurnCardBoxes
 } from './board.js';
 import { 
     setupDecks, drawCard, 
@@ -24,8 +25,7 @@ import {
     updateGameControls, showCardPopup, promptForTradeResponse,
     hideDiceRollAnimation, updateGameComponents,
     clearHighlights, showScreen, highlightChoices,
-    showEndGameScreen, animatePlayerMovement, highlightDeck,
-    highlightEndOfTurnCardBoxes
+    showEndGameScreen, animatePlayerMovement, highlightDeck
 } from './ui.js';
 import {
     initLogging, logGameEvent, logPlayerAction, 

@@ -181,7 +181,6 @@ select, input[type="text"] {
 #start-screen,
 #player-count-screen,
 #role-selection-screen,
-#turn-order-screen,
 #end-game-screen {
     background-image: url('../assets/Critocracy.jpg');
     background-size: cover;

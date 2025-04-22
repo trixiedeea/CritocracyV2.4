@@ -102,12 +102,12 @@
     }
 }
 
-.value-1 { background-image: url('../assets/dice-1.png'); background-size: cover; }
-.value-2 { background-image: url('../assets/dice-2.png'); background-size: cover; }
-.value-3 { background-image: url('../assets/dice-3.png'); background-size: cover; }
-.value-4 { background-image: url('../assets/dice-4.png'); background-size: cover; }
-.value-5 { background-image: url('../assets/dice-5.png'); background-size: cover; }
-.value-6 { background-image: url('../assets/dice-6.png'); background-size: cover; }
+.value-1 { background-image: url('../assets/dice1.png'); background-size: cover; }
+.value-2 { background-image: url('../assets/dice2.png'); background-size: cover; }
+.value-3 { background-image: url('../assets/dice3.png'); background-size: cover; }
+.value-4 { background-image: url('../assets/dice4.png'); background-size: cover; }
+.value-5 { background-image: url('../assets/dice5.png'); background-size: cover; }
+.value-6 { background-image: url('../assets/dice6.png'); background-size: cover; }
 
 .order-number {
     position: absolute;
