@@ -12,7 +12,8 @@ import {
     getPathColorFromCoords, // To get path color by coordinates
     drawPlayerToken, // To draw player tokens
     synchronizePlayerCoordinates, // For syncing player coordinates
-    refreshPlayerTokens // For refreshing player tokens
+    refreshPlayerTokens,
+    managePlayerTokens
 } from './board.js';
 import { handlePlayerAction, resolveBoardClick, resolvePlayerChoice, getGameState } from './game.js';
 
@@ -345,19 +346,23 @@ export function setupPlayerCountUI() {
             const totalPlayers = 6; // Fixed at 6
             const humanPlayers = parseInt(humanPlayerCountElement.value, 10) || 1;
             
-            // Validate
-            if (humanPlayers < 1 || humanPlayers > 6) {
-                alert("Please select 1-6 human players.");
+            // Basic validation
+            if (humanPlayers < 1 || humanPlayers > totalPlayers) {
+                alert("Number of human players must be between 1 and the total number of players.");
                 return;
             }
-            console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
             
-            // Setup role selection UI first
-            setupRoleSelectionUI(totalPlayers, humanPlayers);
+            console.log(`Player count confirm: Total=${totalPlayers}, Human=${humanPlayers}`);
             
-            // Then transition to the role selection screen
-            requestAnimationFrame(() => {
-                showScreen('role-selection-screen');
+            // Import setupRoleSelectionPhase dynamically to avoid circular dependency
+            import('./game.js').then(game => {
+                if (game.setupRoleSelectionPhase(totalPlayers, humanPlayers)) {
+                    setupRoleSelectionUI(totalPlayers, humanPlayers);
+                    showScreen('role-selection-screen');
+                } else {
+                    console.error("Failed to set up role selection phase in game logic.");
+                    alert("Invalid player configuration. Please try again.");
+                }
             });
         });
     }
@@ -1783,15 +1788,56 @@ export function safeResizeCanvas() {
  * Update game components and UI elements
  */
 export function updateGameComponents() {
-    console.log("Updating game components...");
-    drawAllPlayerTokens();
-    updatePlayerInfo();
-    updateGameControls();
-    
-    // Create player token elements for animations
-    createPlayerTokenElements();
-    
-    console.log("Game components updated");
+    try {
+        // Update player info panel
+        updatePlayerInfo();
+        
+        // Update board state
+        if (window.board && typeof window.board.updateBoardState === 'function') {
+            window.board.updateBoardState();
+        }
+        
+        // Update any other game components that need updating
+        updateResourceDisplays();
+        updateTurnIndicators();
+        
+        console.log("Game components updated successfully");
+    } catch (error) {
+        console.error("Error updating game components:", error);
+    }
+}
+
+/**
+ * Update resource displays for all players
+ */
+function updateResourceDisplays() {
+    const players = getPlayers();
+    players.forEach(player => {
+        const resourceDisplay = document.getElementById(`player-${player.id}-resources`);
+        if (resourceDisplay) {
+            resourceDisplay.innerHTML = `
+                <div class="resource">Money: ${player.resources.money || 0}</div>
+                <div class="resource">Knowledge: ${player.resources.knowledge || 0}</div>
+                <div class="resource">Influence: ${player.resources.influence || 0}</div>
+            `;
+        }
+    });
+}
+
+/**
+ * Update turn indicators for all players
+ */
+function updateTurnIndicators() {
+    const players = getPlayers();
+    const gameState = getGameState();
+    const currentPlayerId = gameState.currentPlayerId;
+
+    players.forEach(player => {
+        const indicator = document.getElementById(`player-${player.id}-turn-indicator`);
+        if (indicator) {
+            indicator.className = `turn-indicator ${player.id === currentPlayerId ? 'active' : ''}`;
+        }
+    });
 }
 
 // --- Highlight Management ---
@@ -2120,8 +2166,11 @@ export function clearHighlights() {
     
     // Redraw the board to clear highlights
     try {
-        if (typeof drawBoard === 'function') {
-            drawBoard();
+        // Check if drawBoard is available as a global function through the window object
+        if (window.board && typeof window.board.drawBoard === 'function') {
+            window.board.drawBoard();
+        } else if (typeof window.drawBoard === 'function') {
+            window.drawBoard();
         }
     } catch (error) {
         console.error("Error during clearHighlights:", error);
@@ -2175,24 +2224,19 @@ export function showDiceRollAnimation(startOrResult, result) {
             SOUND_EFFECTS.diceRoll.play().catch(e => console.warn("Could not play dice sound:", e));
             
             // Get sound duration to sync animation
-            const soundDuration = SOUND_EFFECTS.diceRoll.duration * 1000 || 1200; // Fallback if duration unavailable
+            const soundDuration = SOUND_EFFECTS.diceRoll.duration * 1000 || 1200;
             
             // Use the imported animateDiceRoll from animations.js
-            // This will override the default animation with a better one
             if (typeof animateDiceRoll === 'function') {
                 // We pass null as the final value since we're just starting the animation
-                // The animation will show random values and last as long as the sound
                 animateDiceRoll(diceElement, null, soundDuration);
             } else {
                 // Fallback to our internal animation if animateDiceRoll isn't available
-                // Ensure any previous animations are cleared
                 if (window.diceAnimationInterval) {
                     clearInterval(window.diceAnimationInterval);
                 }
                 
-                // Set up animation to show random values
                 let animationFrames = 0;
-                // Calculate number of frames based on sound duration (avg 12 frames per 1000ms)
                 const totalFrames = Math.ceil(soundDuration / 80); 
                 window.diceAnimationInterval = setInterval(() => {
                     if (animationFrames < totalFrames) {
@@ -2200,87 +2244,63 @@ export function showDiceRollAnimation(startOrResult, result) {
                         diceElement.textContent = randomValue;
                         animationFrames++;
                     } else {
-                        // End the random animation
                         clearInterval(window.diceAnimationInterval);
                         window.diceAnimationInterval = null;
                     }
-                }, soundDuration / totalFrames); // Space frames evenly across sound duration
+                }, soundDuration / totalFrames);
             }
         } else {
             // Ending animation with result
             const diceElement = diceDisplay.querySelector('.dice');
             if (diceElement) {
-                // Clear any ongoing animations
                 if (window.diceAnimationInterval) {
                     clearInterval(window.diceAnimationInterval);
                     window.diceAnimationInterval = null;
                 }
                 
-                // Update classes for result display
                 diceElement.classList.remove('dice-animation');
                 diceElement.classList.add('dice-result');
                 
-                // Use the imported animateDiceRoll for the final result animation
                 if (typeof animateDiceRoll === 'function') {
-                    // This will animate to the final value
                     animateDiceRoll(diceElement, result, 500).then(() => {
-                        // Add pulse effect after animation completes
                         diceElement.style.animation = 'dicePulse 0.5s ease-in-out';
                     });
                 } else {
-                    // Fallback to simple display
                     diceElement.textContent = result;
-                    // Add a pulse effect
                     diceElement.style.animation = 'none';
-                    void diceElement.offsetWidth; // Force reflow
+                    void diceElement.offsetWidth;
                     diceElement.style.animation = 'dicePulse 0.5s ease-in-out';
                 }
-                
-                // Log the dice roll
-                logMessage(`Rolled a ${result}!`, 'dice');
             }
         }
-    } else if (typeof startOrResult === 'number') {
-        // Showing a specific number directly (shorthand version)
-        
-        // Clear any existing content and animations
+    } else {
+        // Showing a specific number directly
         diceDisplay.innerHTML = '';
         if (window.diceAnimationInterval) {
             clearInterval(window.diceAnimationInterval);
             window.diceAnimationInterval = null;
         }
         
-        // Create dice element showing the result directly
         const diceElement = document.createElement('div');
         diceElement.className = 'dice dice-result';
         
-        // Display the result with or without animation
         if (typeof animateDiceRoll === 'function') {
-            // Set initial value to avoid flash of empty content
             diceElement.textContent = '?';
             diceDisplay.appendChild(diceElement);
             diceDisplay.style.display = 'flex';
             
-            // Play shorter dice sound for direct display
-            SOUND_EFFECTS.diceRoll.currentTime = 0.5; // Skip to middle of sound
+            SOUND_EFFECTS.diceRoll.currentTime = 0.5;
             SOUND_EFFECTS.diceRoll.play().catch(e => console.warn("Could not play dice sound:", e));
             
-            // Animate directly to final value with short animation
             animateDiceRoll(diceElement, startOrResult, 300).then(() => {
                 diceElement.style.animation = 'dicePulse 0.5s ease-in-out';
             });
         } else {
-            // Fallback simple display
             diceElement.textContent = startOrResult;
             diceDisplay.appendChild(diceElement);
             diceDisplay.style.display = 'flex';
-            
-            // Add a pulse effect
             diceElement.style.animation = 'dicePulse 0.5s ease-in-out';
         }
-        
-        // Log the dice roll
-        logMessage(`Rolled a ${startOrResult}!`, 'dice');
     }
 }
 
@@ -3059,23 +3079,14 @@ function getEffectDetailsHTML(effect) {
     return detailsHTML;
 }
 
-/**
- * Draw all player tokens on the board
- * This function uses createPlayerTokenElements to render player tokens as DOM elements
- */
+// Update drawAllPlayerTokens to use managePlayerTokens
 export function drawAllPlayerTokens() {
-    // Create or update player token DOM elements
-    createPlayerTokenElements();
-    
-    // Get all players
-    const players = getPlayers();
-    if (!players || players.length === 0) {
-        console.warn('No players to draw');
-        return;
+    try {
+        const players = getPlayers();
+        managePlayerTokens(players);
+    } catch (error) {
+        console.error("Error drawing player tokens:", error);
     }
-    
-    // Log for debugging
-    console.log(`Updated token elements for ${players.length} players`);
 }
 
 // Add setupBoardUIComponents function
@@ -3336,6 +3347,55 @@ export function handleBoardClick(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const coords = unscaleCoordinates(x, y);
+    
+    // First check if the game state is currently awaiting a choice
+    if (window.gameState) {
+        const gameState = window.gameState;
+        const currentTurnState = gameState.turnState;
+        
+        if (['AWAITING_START_CHOICE', 'AWAITING_CHOICEPOINT'].includes(currentTurnState)) {
+            // Check if the click is on one of the highlighted choices
+            const choices = gameState.currentChoices || [];
+            console.log("Checking click against choices:", choices);
+            
+            // Check if the click hit any of the valid choice points
+            for (const choice of choices) {
+                if (!choice.coordinates) continue;
+                
+                const choiceX = choice.coordinates[0];
+                const choiceY = choice.coordinates[1];
+                
+                // Check if click is within a reasonable distance of the choice point
+                const distance = Math.sqrt(
+                    Math.pow(choiceX - coords.x, 2) + 
+                    Math.pow(choiceY - coords.y, 2)
+                );
+                
+                // If within 30 units (adjusted for scale), consider it a hit
+                if (distance <= 30) {
+                    console.log("Click hit choice:", choice);
+                    
+                    // Import the game module to call resolvePlayerChoice
+                    import('./game.js').then(game => {
+                        if (typeof game.resolvePlayerChoice === 'function') {
+                            game.resolvePlayerChoice(gameState.currentPlayerId, choice);
+                        } else {
+                            console.error("resolvePlayerChoice function not found in game module");
+                        }
+                    }).catch(error => {
+                        console.error("Error importing game module:", error);
+                    });
+                    
+                    return; // Stop processing after finding a match
+                }
+            }
+            
+            console.log("Click did not hit a valid choice.");
+        }
+    }
+    
+    // Fall back to the regular resolveBoardClick if no specific choice was hit
+    // or the game is not awaiting a choice
     resolveBoardClick(coords);
 }
 
@@ -3414,120 +3474,34 @@ setInterval(forceRoleCardsVisible, 1000);
  * This ensures animations.js can find tokens by ID
  */
 export function createPlayerTokenElements() {
-    const TOKEN_DIR = 'assets/tokens'; // Explicit token directory
-    
-    // Get the board container where tokens will be placed
-    const boardContainer = document.getElementById('board-container');
-    if (!boardContainer) {
-        console.warn("Cannot create player tokens: board container not found");
-        return;
+    try {
+        // Get current players
+        const players = getPlayers();
+        
+        // Create token elements for each player
+        players.forEach(player => {
+            const tokenElement = document.createElement('div');
+            tokenElement.id = `player-${player.id}-token`;
+            tokenElement.className = 'player-token';
+            tokenElement.style.backgroundColor = getPlayerColor(player.role);
+            
+            // Add player name and role
+            const playerInfo = document.createElement('div');
+            playerInfo.className = 'player-info';
+            playerInfo.textContent = `${player.name} (${player.role})`;
+            tokenElement.appendChild(playerInfo);
+            
+            // Add to board container
+            const boardContainer = document.getElementById('board-container');
+            if (boardContainer) {
+                boardContainer.appendChild(tokenElement);
+            }
+        });
+        
+        console.log("Player token elements created successfully");
+    } catch (error) {
+        console.error("Error creating player token elements:", error);
     }
-    
-    // Create a container for tokens if it doesn't exist
-    let tokenContainer = document.getElementById('player-tokens-container');
-    if (!tokenContainer) {
-        tokenContainer = document.createElement('div');
-        tokenContainer.id = 'player-tokens-container';
-        tokenContainer.style.position = 'absolute';
-        tokenContainer.style.top = '0';
-        tokenContainer.style.left = '0';
-        tokenContainer.style.width = '100%';
-        tokenContainer.style.height = '100%';
-        tokenContainer.style.pointerEvents = 'none'; // Don't intercept clicks
-        boardContainer.appendChild(tokenContainer);
-    }
-    
-    // Get all players from game state
-    const players = window.game?.getGameState()?.players || [];
-    if (!players.length) {
-        console.warn("No players available to create token elements");
-        return;
-    }
-    
-    console.log(`Creating/updating token elements for ${players.length} players from ${TOKEN_DIR}`);
-    
-    // For each player, create or update their token element
-    players.forEach(player => {
-        if (!player || !player.role) return;
-        
-        // Check if token already exists
-        let token = document.getElementById(`player-token-${player.id}`);
-        
-        // If token doesn't exist, create it
-        if (!token) {
-            token = document.createElement('div');
-            token.id = `player-token-${player.id}`;
-            token.className = 'player-token';
-            token.style.position = 'absolute';
-            
-            // Create img element for the token
-            const tokenImg = document.createElement('img');
-            
-            // Get token filename from player role, with fallback
-            const tokenFilename = PLAYER_ROLES[player.role]?.token || `${player.role[0]}.png`;
-            
-            // Set token source with path explicitly from assets/tokens directory
-            tokenImg.src = `${TOKEN_DIR}/${tokenFilename}`;
-            tokenImg.alt = player.name || player.role;
-            tokenImg.style.width = '100%';
-            tokenImg.style.height = '100%';
-            
-            // Add error handling for token images
-            tokenImg.onerror = () => {
-                console.warn(`Failed to load token image for ${player.name} from ${tokenImg.src}. Using fallback.`);
-                
-                // Create a fallback colored circle with player initial
-                const canvas = document.createElement('canvas');
-                const size = 24; // Default token size
-                canvas.width = size;
-                canvas.height = size;
-                const ctx = canvas.getContext('2d');
-                
-                if (ctx) {
-                    // Draw colored circle based on role
-                    const colors = {
-                        'HISTORIAN': '#3498db',    // Blue
-                        'REVOLUTIONARY': '#e74c3c', // Red
-                        'COLONIALIST': '#2ecc71',  // Green
-                        'ENTREPRENEUR': '#f1c40f', // Yellow
-                        'POLITICIAN': '#9b59b6',   // Purple
-                        'ARTIST': '#e67e22'        // Orange
-                    };
-                    
-                    const color = colors[player.role] || '#95a5a6'; // Gray fallback
-                    
-                    // Draw circle
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Add player initial
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 14px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    const initial = (player.name || player.role || '?').charAt(0).toUpperCase();
-                    ctx.fillText(initial, size/2, size/2);
-                    
-                    // Use the canvas as the image source
-                    tokenImg.src = canvas.toDataURL();
-                }
-            };
-            
-            token.appendChild(tokenImg);
-            tokenContainer.appendChild(token);
-        }
-        
-        // Update position if player has coordinates
-        if (player.currentCoords) {
-            token.style.left = `${player.currentCoords.x}px`;
-            token.style.top = `${player.currentCoords.y}px`;
-        }
-        
-        // Update role-specific styling
-        token.dataset.role = player.role;
-    });
 }
 
 // Make createPlayerTokenElements available to other modules via a global object
@@ -3539,155 +3513,41 @@ window.ui = window.ui || {};
 
 // Expose key UI functions globally for other modules to use
 window.ui.createPlayerTokenElements = createPlayerTokenElements;
-window.ui.enableTurnOrderRollButton = enableTurnOrderRollButton;
 window.ui.updateTurnOrderDisplay = updateTurnOrderDisplay;
 window.ui.setupTurnOrderUI = setupTurnOrderUI;
 
-/**
- * Enable the roll button for turn order determination
- * @param {string} playerId - ID of the player who should roll
- */
-export function enableTurnOrderRollButton(playerId) {
-    console.log(`Enabling turn order roll button for player ${playerId}`);
+export function updateTurnOrderDisplay() {
+    const container = document.getElementById('turn-order-display');
+    if (!container) return;
     
-    // Get the turn order roll button
-    const rollTurnOrderBtn = document.getElementById('roll-turn-order-btn');
-    if (!rollTurnOrderBtn) {
-        console.error("Turn order roll button not found");
-        return;
-    }
+    // Clear existing content
+    container.innerHTML = '';
     
-    // Get the player
-    const player = getPlayerById(playerId);
-    if (!player) {
-        console.error(`Player with ID ${playerId} not found`);
-        return;
-    }
+    // Create header
+    const header = document.createElement('h2');
+    header.textContent = 'Turn Order';
+    container.appendChild(header);
     
-    // Update button text to indicate which player should roll
-    rollTurnOrderBtn.textContent = `${player.name}, Roll the Dice!`;
-    rollTurnOrderBtn.disabled = false;
+    // Get all players
+    const players = getPlayers();
     
-    // Highlight the player's card in the turn order display
-    const playerElement = document.querySelector(`.turn-order-player[data-player-id="${playerId}"]`);
-    if (playerElement) {
-        // Remove active class from all players
-        document.querySelectorAll('.turn-order-player').forEach(el => {
-            el.classList.remove('active');
-        });
+    // Create player elements
+    players.forEach(player => {
+        const playerElement = document.createElement('div');
+        playerElement.className = 'turn-order-player';
+        playerElement.setAttribute('data-player-id', player.id);
         
-        // Add active class to current player
-        playerElement.classList.add('active');
+        // Player name and role
+        const nameElement = document.createElement('div');
+        nameElement.className = 'player-name';
+        nameElement.textContent = `${player.name} (${player.role})`;
         
-        // Scroll the player element into view if needed
-        playerElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    // Set up event listener for the roll button
-    // Make sure to remove any existing listeners first to prevent duplicates
-    rollTurnOrderBtn.onclick = null;
-    rollTurnOrderBtn.onclick = () => {
-        // Handle the click - roll dice for this player
-        rollTurnOrderBtn.disabled = true;
+        // Append elements
+        playerElement.appendChild(nameElement);
         
-        // Import the game module dynamically to avoid circular dependencies
-        import('./game.js').then(game => {
-            const result = game.rollForTurnOrder(playerId);
-            
-            // Animate the dice roll
-            showDiceRollAnimation(result, result);
-            
-            // After a brief delay, hide the animation
-            setTimeout(() => {
-                hideDiceRollAnimation(500);
-            }, 2000);
-        });
-    };
-}
-
-/**
- * Update the turn order display with current roll results
- * @param {Object} rollResults - Object mapping player IDs to roll results
- * @param {boolean} isFinal - Whether this is the final display after all rolls
- */
-export function updateTurnOrderDisplay(rollResults, isFinal = false) {
-    console.log("Updating turn order display:", rollResults, isFinal ? "(Final)" : "");
-    
-    // Get all player elements in the turn order container
-    const playerElements = document.querySelectorAll('.turn-order-player');
-    if (playerElements.length === 0) {
-        console.warn("No player elements found in turn order container");
-        return;
-    }
-    
-    // Update each player's roll result
-    playerElements.forEach(element => {
-        const playerId = element.getAttribute('data-player-id');
-        if (!playerId) return;
-        
-        const rollResult = rollResults[playerId];
-        const rollResultElement = element.querySelector('.roll-result');
-        
-        if (rollResultElement && rollResult !== undefined) {
-            // Update the roll result
-            rollResultElement.textContent = rollResult;
-            
-            // Highlight the result with animation
-            rollResultElement.classList.remove('highlight-animation');
-            void rollResultElement.offsetWidth; // Trigger reflow to restart animation
-            rollResultElement.classList.add('highlight-animation');
-        }
+        // Append to container
+        container.appendChild(playerElement);
     });
-    
-    // If this is the final update, update the order indicators and finalize UI
-    if (isFinal) {
-        // Sort players by roll results
-        const sortedPlayerIds = Object.keys(rollResults).sort((a, b) => rollResults[b] - rollResults[a]);
-        
-        // Update order indicators
-        sortedPlayerIds.forEach((playerId, index) => {
-            const playerElement = document.querySelector(`.turn-order-player[data-player-id="${playerId}"]`);
-            if (!playerElement) return;
-            
-            const orderIndicator = playerElement.querySelector('.order-indicator');
-            if (orderIndicator) {
-                orderIndicator.textContent = `${index + 1}`;
-                
-                // Add visual indicator for turn order
-                playerElement.style.order = index;
-                
-                // Add highlight based on position
-                if (index === 0) {
-                    playerElement.classList.add('first-player');
-                } else {
-                    playerElement.classList.remove('first-player');
-                }
-            }
-        });
-        
-        // Show a continue button to advance to the game screen
-        const turnOrderContainer = document.getElementById('turn-order-container');
-        if (turnOrderContainer) {
-            // Check if button already exists
-            let continueButton = document.getElementById('continue-to-game-btn');
-            
-            if (!continueButton) {
-                continueButton = document.createElement('button');
-                continueButton.id = 'continue-to-game-btn';
-                continueButton.className = 'action-button';
-                continueButton.textContent = 'Continue to Game';
-                
-                continueButton.onclick = () => {
-                    showScreen('game-board-screen');
-                };
-                
-                turnOrderContainer.appendChild(continueButton);
-            }
-            
-            // Show the button
-            continueButton.style.display = 'block';
-        }
-    }
 }
 
 // --- Export UI Functions to Global Scope ---
@@ -3708,7 +3568,6 @@ window.ui.updateGameControls = updateGameControls;
 window.ui.promptForTradeResponse = promptForTradeResponse;
 window.ui.promptTargetSelection = promptTargetSelection;
 window.ui.createPlayerTokenElements = createPlayerTokenElements;
-window.ui.enableTurnOrderRollButton = enableTurnOrderRollButton;
 window.ui.updateTurnOrderDisplay = updateTurnOrderDisplay;
 window.ui.setupTurnOrderUI = setupTurnOrderUI;
 
@@ -3738,13 +3597,13 @@ export function setupTurnOrderUI() {
     
     // Create header
     const header = document.createElement('h2');
-    header.textContent = 'Roll for Turn Order';
+    header.textContent = 'Turn Order';
     container.appendChild(header);
     
     // Create explanation text
     const explanation = document.createElement('p');
     explanation.className = 'turn-order-explanation';
-    explanation.textContent = 'Each player will roll the dice. The highest roll goes first.';
+    explanation.textContent = 'Turn order has been randomly determined.';
     container.appendChild(explanation);
     
     // Create player container
@@ -3766,11 +3625,6 @@ export function setupTurnOrderUI() {
         nameElement.className = 'player-name';
         nameElement.textContent = `${player.name} (${player.role})`;
         
-        // Roll result
-        const rollResult = document.createElement('div');
-        rollResult.className = 'roll-result';
-        rollResult.textContent = '?';
-        
         // Order indicator
         const orderIndicator = document.createElement('div');
         orderIndicator.className = 'order-indicator';
@@ -3778,22 +3632,11 @@ export function setupTurnOrderUI() {
         
         // Append elements
         playerElement.appendChild(nameElement);
-        playerElement.appendChild(rollResult);
         playerElement.appendChild(orderIndicator);
         
         // Append to players container
         playersContainer.appendChild(playerElement);
     });
-    
-    // Create roll button
-    const rollButton = document.createElement('button');
-    rollButton.id = 'roll-turn-order-btn';
-    rollButton.className = 'action-button';
-    rollButton.textContent = 'Click to Roll';
-    rollButton.disabled = true; // Initially disabled until game logic enables it
-    
-    // Add the roll button to the container
-    container.appendChild(rollButton);
     
     // Add CSS for animation
     const style = document.createElement('style');
@@ -3820,3 +3663,51 @@ export function setupTurnOrderUI() {
     // Expose the turn order UI setup function for other modules
     window.ui.setupTurnOrderUI = setupTurnOrderUI;
 }
+
+// Function to determine turn order internally
+function determineTurnOrder() {
+    const players = getPlayers();
+    const shuffledPlayers = [...players];
+    
+    // Fisher-Yates shuffle algorithm for random ordering
+    for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+    }
+    
+    // Update the turn order display
+    updateTurnOrderDisplay();
+    
+    // Return the shuffled player IDs
+    return shuffledPlayers.map(player => player.id);
+}
+
+// Function to handle confirm roll button click
+function handleConfirmRollClick() {
+    // Determine turn order
+    const turnOrder = determineTurnOrder();
+    
+    // Initialize the game with the determined turn order
+    import('./game.js').then(gameModule => {
+        gameModule.initializeGame(turnOrder).then(success => {
+            if (success) {
+                // Show the game board
+                showScreen('game-board-screen');
+                // Update UI for the first player
+                updatePlayerInfo();
+                updateGameControls();
+            } else {
+                console.error("Failed to initialize game");
+                alert("Error initializing game. Please check console and refresh.");
+            }
+        });
+    });
+}
+
+// Add event listener for confirm roll button
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmRollBtn = document.getElementById('confirm-roll-btn');
+    if (confirmRollBtn) {
+        confirmRollBtn.addEventListener('click', handleConfirmRollClick);
+    }
+});

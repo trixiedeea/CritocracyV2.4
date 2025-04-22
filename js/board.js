@@ -149,30 +149,6 @@ const loadTokenImages = async () => {
 };
 
 /**
- * Refreshes a specific player's token or all player tokens if no ID is provided
- * @param {string} [playerId] - Optional ID of the player whose token to refresh
- */
-export const refreshPlayerTokens = (playerId) => {
-    if (playerId) {
-        const player = getPlayerById(playerId);
-        if (player) {
-            // Synchronize coordinates to ensure consistency
-            synchronizePlayerCoordinates(player);
-            drawPlayerToken(player);
-        } else {
-            console.warn(`Cannot refresh token: Player ${playerId} not found`);
-        }
-    } else {
-        // Refresh all player tokens
-        const players = getPlayers();
-        players.forEach(player => {
-            synchronizePlayerCoordinates(player);
-            drawPlayerToken(player);
-        });
-    }
-};
-
-/**
  * Ensures player.coords and player.currentCoords are synchronized
  * @param {Object} player - The player to synchronize coordinates for
  */
@@ -200,186 +176,137 @@ export const synchronizePlayerCoordinates = (player) => {
 };
 
 /**
- * Creates/updates a player token DOM element instead of drawing it on canvas
+ * Single function to handle all token management
+ * @param {Array} players - Array of players to create/update tokens for
+ * @param {string} [playerId] - Optional specific player ID to update
  */
-export const drawPlayerToken = (player) => {
-    if (!player) return;
-    
-    // Ensure coordinates are synchronized
-    synchronizePlayerCoordinates(player);
-    
-    // Check if player has valid coordinates after synchronization
-    if (!player.currentCoords) {
-        console.warn(`Cannot draw token for ${player?.name || 'unknown player'}: No coordinates`);
+export function managePlayerTokens(players, playerId = null) {
+    if (!players || players.length === 0) {
+        console.warn("No players available to manage tokens");
         return;
     }
     
-    const boardContainer = document.getElementById('board-container');
-    if (!boardContainer) return;
-    
-    // Make sure the token container exists
-    let tokenContainer = document.getElementById('player-tokens-container');
-    if (!tokenContainer) {
-        tokenContainer = document.createElement('div');
-        tokenContainer.id = 'player-tokens-container';
-        tokenContainer.style.position = 'absolute';
-        tokenContainer.style.top = '0';
-        tokenContainer.style.left = '0';
-        tokenContainer.style.width = '100%';
-        tokenContainer.style.height = '100%';
-        tokenContainer.style.pointerEvents = 'none';
-        tokenContainer.style.zIndex = '10'; // Ensure tokens appear above the board
-        boardContainer.appendChild(tokenContainer);
-    }
-    
-    // Check if this player's token element already exists
-    let tokenElement = document.getElementById(`player-token-${player.id}`);
-    
-    // If it doesn't exist, create it
-    if (!tokenElement) {
-        tokenElement = document.createElement('div');
-        tokenElement.id = `player-token-${player.id}`;
-        tokenElement.className = 'player-token';
-        tokenElement.style.position = 'absolute';
-        tokenElement.style.width = `${TOKEN_SIZE}px`;
-        tokenElement.style.height = `${TOKEN_SIZE}px`;
-        tokenElement.style.pointerEvents = 'none';
-        tokenElement.style.zIndex = '15'; // Individual token z-index
-        tokenElement.dataset.playerId = player.id;
-        tokenElement.dataset.playerRole = player.role || 'unknown';
+    try {
+        // Get or create token container
+        let tokenContainer = document.getElementById('player-tokens-container');
+        if (!tokenContainer) {
+            tokenContainer = document.createElement('div');
+            tokenContainer.id = 'player-tokens-container';
+            tokenContainer.style.position = 'absolute';
+            tokenContainer.style.top = '0';
+            tokenContainer.style.left = '0';
+            tokenContainer.style.width = '100%';
+            tokenContainer.style.height = '100%';
+            tokenContainer.style.pointerEvents = 'none';
+            tokenContainer.style.zIndex = '1000'; // Ensure tokens are above everything
+            document.getElementById('board-container').appendChild(tokenContainer);
+        }
         
-        // Create the image element that references the token image
-        const tokenImg = document.createElement('img');
-        if (player.role && PLAYER_ROLES[player.role] && PLAYER_ROLES[player.role].token) {
-            tokenImg.src = `${TOKEN_DIR}/${PLAYER_ROLES[player.role].token}`;
+        // Clear existing tokens
+        tokenContainer.innerHTML = '';
+        
+        // Filter players if specific ID provided
+        const playersToUpdate = playerId 
+            ? players.filter(p => p.id === playerId)
+            : players;
+        
+        // Create tokens for each player
+        playersToUpdate.forEach(player => {
+            if (!player || !player.role) return;
+            
+            // Ensure coordinates are synchronized
+            synchronizePlayerCoordinates(player);
+            
+            // Create token element
+            const tokenElement = document.createElement('div');
+            tokenElement.className = 'player-token';
+            tokenElement.style.position = 'absolute';
+            tokenElement.style.width = '40px';
+            tokenElement.style.height = '40px';
+            tokenElement.style.transform = 'translate(-50%, -50%)';
+            tokenElement.style.zIndex = '1001';
+            
+            // Get token image
+            const roleInitial = player.role.charAt(0).toUpperCase();
+            const tokenImage = document.createElement('img');
+            tokenImage.src = `${TOKEN_DIR}/${roleInitial}.png`;
+            tokenImage.alt = `${player.name} (${player.role})`;
+            tokenImage.style.width = '100%';
+            tokenImage.style.height = '100%';
+            tokenImage.style.borderRadius = '50%';
+            tokenImage.style.backgroundColor = 'white';
+            tokenImage.style.padding = '2px';
             
             // Add error handling for token images
-            tokenImg.onerror = () => {
-                console.warn(`Failed to load token image for ${player.name}. Using fallback.`);
-                // Create a fallback colored circle with initials
-                const canvas = document.createElement('canvas');
-                canvas.width = TOKEN_SIZE;
-                canvas.height = TOKEN_SIZE;
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    // Draw colored circle based on role
-                    const colors = {
-                        'HISTORIAN': '#3498db',
-                        'REVOLUTIONARY': '#e74c3c', 
-                        'COLONIALIST': '#2ecc71',
-                        'ENTREPRENEUR': '#f1c40f',
-                        'POLITICIAN': '#9b59b6',
-                        'ARTIST': '#e67e22'
-                    };
-                    const color = colors[player.role] || '#95a5a6';
-                    
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(TOKEN_SIZE/2, TOKEN_SIZE/2, TOKEN_SIZE/2 - 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Add player initials
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 10px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    const initials = (player.name || player.role || '?').charAt(0);
-                    ctx.fillText(initials, TOKEN_SIZE/2, TOKEN_SIZE/2);
-                    
-                    // Use the canvas as the image source
-                    tokenImg.src = canvas.toDataURL();
-                }
+            tokenImage.onerror = () => {
+                console.warn(`Failed to load token image for ${player.name}, using fallback`);
+                tokenImage.src = `${TOKEN_DIR}/default.png`;
             };
-        } else {
-            console.warn(`Could not find token for player ${player.id} with role ${player.role}`);
-            tokenImg.src = `${TOKEN_DIR}/default.png`;
-        }
-        tokenImg.alt = player.name || player.role || 'Player Token';
-        tokenImg.style.width = '100%';
-        tokenImg.style.height = '100%';
-        tokenElement.appendChild(tokenImg);
-        
-        // Add to the container
-        tokenContainer.appendChild(tokenElement);
-    }
-    
-    // Update position based on the player's coordinates
-    const [scaledX, scaledY] = scaleCoordinates(player.currentCoords.x, player.currentCoords.y);
-    const radius = (TOKEN_SIZE * boardState.scale) / 2;
-    
-    tokenElement.style.left = `${scaledX - radius}px`;
-    tokenElement.style.top = `${scaledY - radius}px`;
-    tokenElement.style.transform = `scale(${boardState.scale})`;
-    
-    // Add indicator if this is the current player
-    if (window.gameState && window.gameState.currentPlayerId === player.id) {
-        tokenElement.classList.add('current-player');
-        
-        // Add a pulsing effect for current player
-        if (!tokenElement.querySelector('.current-player-indicator')) {
-            const indicator = document.createElement('div');
-            indicator.className = 'current-player-indicator';
-            indicator.style.position = 'absolute';
-            indicator.style.top = '-5px';
-            indicator.style.left = '-5px';
-            indicator.style.right = '-5px';
-            indicator.style.bottom = '-5px';
-            indicator.style.border = '2px solid #FFD700';
-            indicator.style.borderRadius = '50%';
-            indicator.style.animation = 'pulse 1.5s infinite';
-            tokenElement.appendChild(indicator);
             
-            // Add the pulse animation if it doesn't exist
-            if (!document.getElementById('token-animations')) {
-                const style = document.createElement('style');
-                style.id = 'token-animations';
-                style.textContent = `
-                    @keyframes pulse {
-                        0% { transform: scale(1); opacity: 0.8; }
-                        50% { transform: scale(1.2); opacity: 0.4; }
-                        100% { transform: scale(1); opacity: 0.8; }
-                    }
-                `;
-                document.head.appendChild(style);
+            // Create name label
+            const nameLabel = document.createElement('div');
+            nameLabel.className = 'player-name';
+            nameLabel.textContent = player.name;
+            nameLabel.style.position = 'absolute';
+            nameLabel.style.top = '-25px';
+            nameLabel.style.left = '50%';
+            nameLabel.style.transform = 'translateX(-50%)';
+            nameLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            nameLabel.style.color = 'white';
+            nameLabel.style.padding = '2px 8px';
+            nameLabel.style.borderRadius = '4px';
+            nameLabel.style.fontSize = '12px';
+            nameLabel.style.fontWeight = 'bold';
+            nameLabel.style.whiteSpace = 'nowrap';
+            
+            // Add current player indicator
+            if (window.gameState && window.gameState.currentPlayerId === player.id) {
+                const indicator = document.createElement('div');
+                indicator.className = 'current-player-indicator';
+                indicator.style.position = 'absolute';
+                indicator.style.top = '-5px';
+                indicator.style.left = '-5px';
+                indicator.style.right = '-5px';
+                indicator.style.bottom = '-5px';
+                indicator.style.border = '3px solid #FFD700';
+                indicator.style.borderRadius = '50%';
+                indicator.style.animation = 'pulse 1.5s infinite';
+                tokenElement.appendChild(indicator);
             }
+            
+            // Add elements to token
+            tokenElement.appendChild(tokenImage);
+            tokenElement.appendChild(nameLabel);
+            
+            // Position token
+            const { x, y } = player.currentCoords || START_SPACE;
+            const scaledCoords = scaleCoordinates(x, y);
+            tokenElement.style.left = `${scaledCoords.x}px`;
+            tokenElement.style.top = `${scaledCoords.y}px`;
+            
+            // Add to container
+            tokenContainer.appendChild(tokenElement);
+        });
+        
+        // Add pulse animation if it doesn't exist
+        if (!document.getElementById('token-animations')) {
+            const style = document.createElement('style');
+            style.id = 'token-animations';
+            style.textContent = `
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.2); opacity: 0.4; }
+                    100% { transform: scale(1); opacity: 0.8; }
+                }
+            `;
+            document.head.appendChild(style);
         }
-    } else {
-        tokenElement.classList.remove('current-player');
-        const indicator = tokenElement.querySelector('.current-player-indicator');
-        if (indicator) {
-            indicator.remove();
-        }
+        
+        console.log("Player tokens managed successfully");
+    } catch (error) {
+        console.error("Error managing player tokens:", error);
     }
-};
-
-/**
- * Updates all player tokens based on current coordinates using DOM elements
- * Also tries to call createPlayerTokenElements if it exists in the UI module
- */
-export const drawAllPlayerTokens = () => {
-    // Get players from the players module
-    const players = getPlayers();
-    
-    if (!players || players.length === 0) {
-        console.warn("No players available to update tokens");
-        return;
-    }
-    
-    // Try to use UI's createPlayerTokenElements if available
-    if (window.ui && typeof window.ui.createPlayerTokenElements === 'function') {
-        window.ui.createPlayerTokenElements();
-        return;
-    }
-    
-    // Fallback: Draw a token for each player
-    players.forEach(player => {
-        if (player && player.currentCoords) {
-            drawPlayerToken(player);
-        }
-    });
-    
-    console.log(`Updated DOM token elements for ${players.length} players`);
-};
+}
 
 /**
  * Draws connections between spaces defined in the path arrays (Scaled).
@@ -1222,7 +1149,16 @@ export const setupBoard = async () => {
         drawBoard,
         getPlayers,
         drawPlayerToken,
-        drawAllPlayerTokens
+        drawAllPlayerTokens,
+        highlightPlayerChoices,
+        getNextStepOptions,
+        startMoveAnimation,
+        getPathColorFromCoords,
+        highlightEndOfTurnCardBoxes,
+        refreshPlayerTokens,
+        synchronizePlayerCoordinates,
+        findSpaceDetailsByCoords,
+        clearMovementPreview
     };
     
     console.log("Board setup complete.")
@@ -1822,4 +1758,9 @@ export function updateBoardPlayers(players) {
 const drawInvisibleSpaces = () => {
     // Simply call the existing function for drawing spaces
     drawPathSpaces();
-};
+};// Export aliases for backward compatibility
+export const createPlayerTokens = managePlayerTokens;
+export const drawAllPlayerTokens = managePlayerTokens;
+export const refreshPlayerTokens = managePlayerTokens;
+export const drawPlayerToken = (player) => managePlayerTokens([player]);
+

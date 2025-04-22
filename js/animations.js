@@ -104,14 +104,14 @@ export const animateDiceRoll = (diceElement, finalValue, duration = 1000) => {
 };
 
 /**
- * Animates a card being drawn
+ * Animates a card being drawn with proper timing for CPU vs Human
  * @param {HTMLElement} cardElement - Card element to animate
  * @param {Object} start - Starting position {x, y}
  * @param {Object} end - Ending position {x, y}
- * @param {number} duration - Duration in milliseconds
+ * @param {boolean} isCPU - Whether this is a CPU player
  * @returns {Promise} Resolves when animation completes
  */
-export const animateCardDraw = (cardElement, start, end, duration = 500) => {
+export const animateCardDraw = (cardElement, start, end, isCPU = false) => {
     return new Promise(resolve => {
         // Set initial position and make visible
         cardElement.style.transform = `translate(${start.x}px, ${start.y}px)`;
@@ -124,8 +124,108 @@ export const animateCardDraw = (cardElement, start, end, duration = 500) => {
         });
         
         // Animate to final position
-        animatePosition(cardElement, start, end, duration).then(() => {
+        animatePosition(cardElement, start, end, 500).then(() => {
+            if (isCPU) {
+                // For CPU, wait fixed time
+                setTimeout(() => {
+                    cardElement.style.opacity = '0';
+                    setTimeout(() => {
+                        cardElement.style.display = 'none';
+                        resolve();
+                    }, 300);
+                }, TIMING.CPU_CARD_DISPLAY);
+            } else {
+                // For human, wait for user interaction
+                const closeButton = cardElement.querySelector('.close-card-btn');
+                if (closeButton) {
+                    closeButton.onclick = () => {
+                        cardElement.style.opacity = '0';
+                        setTimeout(() => {
+                            cardElement.style.display = 'none';
+                            resolve();
+                        }, 300);
+                    };
+                }
+            }
+        });
+    });
+};
+
+/**
+ * Animates a deck flashing to indicate it's time to draw
+ * @param {HTMLElement} deckElement - Deck element to animate
+ * @param {boolean} isCPU - Whether this is a CPU player
+ * @returns {Promise} Resolves when animation completes
+ */
+export const animateDeckFlash = (deckElement, isCPU = false) => {
+    return new Promise(resolve => {
+        let flashCount = 0;
+        const maxFlashes = isCPU ? 4 : 999; // CPU: 4 seconds, Human: indefinite
+        
+        const flash = () => {
+            if (flashCount >= maxFlashes) {
+                deckElement.style.opacity = '1';
+                resolve();
+                return;
+            }
+            
+            deckElement.style.opacity = flashCount % 2 === 0 ? '0.3' : '1';
+            flashCount++;
+            
+            setTimeout(flash, isCPU ? 500 : 300); // Faster flash for human
+        };
+        
+        flash();
+    });
+};
+
+/**
+ * Gets valid moves for a player
+ * @param {Object} position - Current position
+ * @param {number} steps - Number of steps remaining
+ * @returns {Array} Array of valid moves with path information
+ */
+const getValidMoves = (position, steps) => {
+    const moves = [];
+    // Add moves based on current position and available paths
+    // This is a placeholder - actual implementation would check board state
+    moves.push({ x: position.x + steps * 20, y: position.y, path: 'PURPLE' });
+    moves.push({ x: position.x - steps * 20, y: position.y, path: 'BLUE' });
+    moves.push({ x: position.x, y: position.y + steps * 20, path: 'CYAN' });
+    moves.push({ x: position.x, y: position.y - steps * 20, path: 'PINK' });
+    return moves;
+};
+
+/**
+ * Animates a token moving to a new position with proper timing
+ * @param {Object} player - The player whose token is moving
+ * @param {Object} newPosition - The new position coordinates
+ * @param {boolean} isCPU - Whether this is a CPU player
+ * @returns {Promise} Resolves when animation completes
+ */
+export const animateTokenToPosition = (player, newPosition, isCPU = false) => {
+    return new Promise(resolve => {
+        const token = document.querySelector(`[data-player-id="${player.id}"]`);
+        if (!token) {
             resolve();
+            return;
+        }
+        
+        // Enlarge token
+        token.style.transform = `scale(${TIMING.TOKEN_ENLARGE})`;
+        
+        // Move token
+        animatePosition(token, 
+            { x: token.offsetLeft, y: token.offsetTop },
+            { x: newPosition.x, y: newPosition.y },
+            isCPU ? 500 : 300 // Faster movement for CPU
+        ).then(() => {
+            // Pause
+            setTimeout(() => {
+                // Return to normal size
+                token.style.transform = 'scale(1)';
+                resolve();
+            }, TIMING.TOKEN_PAUSE);
         });
     });
 };
@@ -239,74 +339,6 @@ export const showVictoryCelebration = (winnerId, duration = 3000) => {
 };
 
 /**
- * Animates a token moving to a new position
- * @param {Object} player - The player whose token is moving
- * @param {Object} newPosition - The new position coordinates
- * @param {Function} onComplete - Callback function when animation completes
- */
-export const animateTokenToPosition = (player, newPosition, onComplete) => {
-    // Check if we can use the board's animation function
-    if (window.board && typeof window.board.animateTokenToPosition === 'function') {
-        // If the board's function is available, use it
-        const startCoords = player.currentCoords || { x: 0, y: 0 };
-        window.board.animateTokenToPosition(player, startCoords, newPosition, 500, onComplete);
-        return;
-    }
-    
-    // Fallback to DOM-based animation if board function is not available
-    const token = document.getElementById(`player-token-${player.id}`);
-    if (!token) {
-        console.error(`Token not found for player ${player.id}. Make sure tokens are created in the DOM or use board.js animation instead.`);
-        if (onComplete) onComplete();
-        return;
-    }
-    
-    const startX = parseInt(token.style.left) || 0;
-    const startY = parseInt(token.style.top) || 0;
-    const endX = newPosition.x;
-    const endY = newPosition.y;
-    
-    const duration = 500; // milliseconds
-    const startTime = performance.now();
-    
-    const animate = (currentTime) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Use easing function for smooth animation
-        const easedProgress = easeInOutQuad(progress);
-        
-        // Calculate current position
-        const currentX = startX + (endX - startX) * easedProgress;
-        const currentY = startY + (endY - startY) * easedProgress;
-        
-        // Update token position
-        token.style.left = `${currentX}px`;
-        token.style.top = `${currentY}px`;
-        
-        // Continue animation if not complete
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        } else {
-            // Animation complete
-            if (onComplete) onComplete();
-        }
-    };
-    
-    // Start animation
-    requestAnimationFrame(animate);
-};
-
-/**
- * Easing function for smooth animation
- * @param {number} t - Time value between 0 and 1
- * @returns {number} Eased time value
- */
-const easeInOutQuad = (t) => {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-};
-
-/**
  * Shows a card with animation
  * @param {Object} card - The card to show
  * @param {Object} player - The player viewing the card
@@ -347,44 +379,19 @@ export const showCard = (card, player, onClose) => {
 };
 
 /**
- * Highlights valid move paths
+ * Highlights valid move paths with exact colors
  * @param {Object} currentPosition - Current position coordinates
  * @param {number} stepsRemaining - Number of steps remaining
  */
 export const highlightValidMovePaths = (currentPosition, stepsRemaining) => {
-    // Clear existing highlights
-    clearHighlights();
-    
-    // Define getValidMoves function if it's not available from another module
-    // This is a simple placeholder implementation
-    const getValidMoves = (position, steps) => {
-        // This is a placeholder implementation - in a real game, you would
-        // calculate actual valid moves based on the board state
-        const moves = [];
-        // Add some sample positions around the current position
-        moves.push({ x: position.x + steps * 20, y: position.y });
-        moves.push({ x: position.x - steps * 20, y: position.y });
-        moves.push({ x: position.x, y: position.y + steps * 20 });
-        moves.push({ x: position.x, y: position.y - steps * 20 });
-        return moves;
-    };
-    
-    // Get valid moves
     const validMoves = getValidMoves(currentPosition, stepsRemaining);
     
-    // Create highlights for each valid move
-    validMoves.forEach(position => {
-        const highlight = document.createElement('div');
-        highlight.className = 'move-highlight';
-        highlight.style.left = `${position.x}px`;
-        highlight.style.top = `${position.y}px`;
-        
-        document.getElementById('game-board').appendChild(highlight);
-        
-        // Animate highlight
-        requestAnimationFrame(() => {
-            highlight.classList.add('visible');
-        });
+    validMoves.forEach(move => {
+        const pathElement = document.querySelector(`[data-path="${move.path}"]`);
+        if (pathElement) {
+            pathElement.style.backgroundColor = PATH_COLORS[move.path.toUpperCase()];
+            pathElement.style.opacity = '0.5';
+        }
     });
 };
 
@@ -664,4 +671,22 @@ function getDeckColor(deckType) {
     };
     
     return colors[deckType] || '#888888';
-} 
+}
+
+// Constants for game colors
+const PATH_COLORS = {
+    PURPLE: '#9C54DE',
+    BLUE: '#1B3DE5',
+    CYAN: '#00FFFF',
+    PINK: '#FF66FF'
+};
+
+// Constants for timing
+const TIMING = {
+    CPU_CARD_DISPLAY: 4000,
+    CPU_DECK_FLASH: 4000,
+    HUMAN_CARD_DISPLAY: 0, // Indefinite until user closes
+    HUMAN_DECK_FLASH: 0, // Indefinite until user clicks
+    TOKEN_PAUSE: 1000,
+    TOKEN_ENLARGE: 1.25 // 25% enlargement
+}; 
