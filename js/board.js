@@ -18,7 +18,7 @@ import {
 const deckRegions = [];
 
 // ===== Board Constants =====
-const TOKEN_DIR = 'assets/tokens'; 
+const TOKEN_DIR = 'assets/tokens';
 const TOKEN_SIZE = 24; // Base size in original board pixels
 
 // ===== Board State =====
@@ -149,10 +149,70 @@ const loadTokenImages = async () => {
 };
 
 /**
+ * Refreshes a specific player's token or all player tokens if no ID is provided
+ * @param {string} [playerId] - Optional ID of the player whose token to refresh
+ */
+export const refreshPlayerTokens = (playerId) => {
+    if (playerId) {
+        const player = getPlayerById(playerId);
+        if (player) {
+            // Synchronize coordinates to ensure consistency
+            synchronizePlayerCoordinates(player);
+            drawPlayerToken(player);
+        } else {
+            console.warn(`Cannot refresh token: Player ${playerId} not found`);
+        }
+    } else {
+        // Refresh all player tokens
+        const players = getPlayers();
+        players.forEach(player => {
+            synchronizePlayerCoordinates(player);
+            drawPlayerToken(player);
+        });
+    }
+};
+
+/**
+ * Ensures player.coords and player.currentCoords are synchronized
+ * @param {Object} player - The player to synchronize coordinates for
+ */
+export const synchronizePlayerCoordinates = (player) => {
+    if (!player) return;
+    
+    try {
+        // If only one coordinate property exists, use it to set the other
+        if (player.coords && !player.currentCoords) {
+            player.currentCoords = { ...player.coords };
+            console.log(`Synchronized missing currentCoords for ${player.name}`);
+        } else if (!player.coords && player.currentCoords) {
+            player.coords = { ...player.currentCoords };
+            console.log(`Synchronized missing coords for ${player.name}`);
+        } else if (player.coords && player.currentCoords) {
+            // If both exist but are different, choose currentCoords as source of truth
+            if (player.coords.x !== player.currentCoords.x || player.coords.y !== player.currentCoords.y) {
+                player.coords = { ...player.currentCoords };
+                console.log(`Resolved coordinate mismatch for ${player.name}`);
+            }
+        }
+    } catch (error) {
+        console.error(`Error synchronizing coordinates for player:`, error);
+    }
+};
+
+/**
  * Creates/updates a player token DOM element instead of drawing it on canvas
  */
 export const drawPlayerToken = (player) => {
-    if (!player || !player.currentCoords) return;
+    if (!player) return;
+    
+    // Ensure coordinates are synchronized
+    synchronizePlayerCoordinates(player);
+    
+    // Check if player has valid coordinates after synchronization
+    if (!player.currentCoords) {
+        console.warn(`Cannot draw token for ${player?.name || 'unknown player'}: No coordinates`);
+        return;
+    }
     
     const boardContainer = document.getElementById('board-container');
     if (!boardContainer) return;
@@ -168,6 +228,7 @@ export const drawPlayerToken = (player) => {
         tokenContainer.style.width = '100%';
         tokenContainer.style.height = '100%';
         tokenContainer.style.pointerEvents = 'none';
+        tokenContainer.style.zIndex = '10'; // Ensure tokens appear above the board
         boardContainer.appendChild(tokenContainer);
     }
     
@@ -183,11 +244,52 @@ export const drawPlayerToken = (player) => {
         tokenElement.style.width = `${TOKEN_SIZE}px`;
         tokenElement.style.height = `${TOKEN_SIZE}px`;
         tokenElement.style.pointerEvents = 'none';
+        tokenElement.style.zIndex = '15'; // Individual token z-index
+        tokenElement.dataset.playerId = player.id;
+        tokenElement.dataset.playerRole = player.role || 'unknown';
         
         // Create the image element that references the token image
         const tokenImg = document.createElement('img');
         if (player.role && PLAYER_ROLES[player.role] && PLAYER_ROLES[player.role].token) {
             tokenImg.src = `${TOKEN_DIR}/${PLAYER_ROLES[player.role].token}`;
+            
+            // Add error handling for token images
+            tokenImg.onerror = () => {
+                console.warn(`Failed to load token image for ${player.name}. Using fallback.`);
+                // Create a fallback colored circle with initials
+                const canvas = document.createElement('canvas');
+                canvas.width = TOKEN_SIZE;
+                canvas.height = TOKEN_SIZE;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    // Draw colored circle based on role
+                    const colors = {
+                        'HISTORIAN': '#3498db',
+                        'REVOLUTIONARY': '#e74c3c', 
+                        'COLONIALIST': '#2ecc71',
+                        'ENTREPRENEUR': '#f1c40f',
+                        'POLITICIAN': '#9b59b6',
+                        'ARTIST': '#e67e22'
+                    };
+                    const color = colors[player.role] || '#95a5a6';
+                    
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(TOKEN_SIZE/2, TOKEN_SIZE/2, TOKEN_SIZE/2 - 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add player initials
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const initials = (player.name || player.role || '?').charAt(0);
+                    ctx.fillText(initials, TOKEN_SIZE/2, TOKEN_SIZE/2);
+                    
+                    // Use the canvas as the image source
+                    tokenImg.src = canvas.toDataURL();
+                }
+            };
         } else {
             console.warn(`Could not find token for player ${player.id} with role ${player.role}`);
             tokenImg.src = `${TOKEN_DIR}/default.png`;
@@ -201,19 +303,58 @@ export const drawPlayerToken = (player) => {
         tokenContainer.appendChild(tokenElement);
     }
     
-    // Position the token based on the player's coordinates
-    if (player.currentCoords) {
-        const [scaledX, scaledY] = scaleCoordinates(player.currentCoords.x, player.currentCoords.y);
-        const radius = (TOKEN_SIZE * boardState.scale) / 2;
-        tokenElement.style.left = `${scaledX - radius}px`;
-        tokenElement.style.top = `${scaledY - radius}px`;
-        tokenElement.style.transform = `scale(${boardState.scale})`;
-        tokenElement.style.transformOrigin = 'center';
+    // Update position based on the player's coordinates
+    const [scaledX, scaledY] = scaleCoordinates(player.currentCoords.x, player.currentCoords.y);
+    const radius = (TOKEN_SIZE * boardState.scale) / 2;
+    
+    tokenElement.style.left = `${scaledX - radius}px`;
+    tokenElement.style.top = `${scaledY - radius}px`;
+    tokenElement.style.transform = `scale(${boardState.scale})`;
+    
+    // Add indicator if this is the current player
+    if (window.gameState && window.gameState.currentPlayerId === player.id) {
+        tokenElement.classList.add('current-player');
+        
+        // Add a pulsing effect for current player
+        if (!tokenElement.querySelector('.current-player-indicator')) {
+            const indicator = document.createElement('div');
+            indicator.className = 'current-player-indicator';
+            indicator.style.position = 'absolute';
+            indicator.style.top = '-5px';
+            indicator.style.left = '-5px';
+            indicator.style.right = '-5px';
+            indicator.style.bottom = '-5px';
+            indicator.style.border = '2px solid #FFD700';
+            indicator.style.borderRadius = '50%';
+            indicator.style.animation = 'pulse 1.5s infinite';
+            tokenElement.appendChild(indicator);
+            
+            // Add the pulse animation if it doesn't exist
+            if (!document.getElementById('token-animations')) {
+                const style = document.createElement('style');
+                style.id = 'token-animations';
+                style.textContent = `
+                    @keyframes pulse {
+                        0% { transform: scale(1); opacity: 0.8; }
+                        50% { transform: scale(1.2); opacity: 0.4; }
+                        100% { transform: scale(1); opacity: 0.8; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+    } else {
+        tokenElement.classList.remove('current-player');
+        const indicator = tokenElement.querySelector('.current-player-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
     }
 };
 
 /**
  * Updates all player tokens based on current coordinates using DOM elements
+ * Also tries to call createPlayerTokenElements if it exists in the UI module
  */
 export const drawAllPlayerTokens = () => {
     // Get players from the players module
@@ -224,7 +365,13 @@ export const drawAllPlayerTokens = () => {
         return;
     }
     
-    // Draw a token for each player
+    // Try to use UI's createPlayerTokenElements if available
+    if (window.ui && typeof window.ui.createPlayerTokenElements === 'function') {
+        window.ui.createPlayerTokenElements();
+        return;
+    }
+    
+    // Fallback: Draw a token for each player
     players.forEach(player => {
         if (player && player.currentCoords) {
             drawPlayerToken(player);
@@ -315,14 +462,25 @@ export const drawPathSpaces = () => {
 export const resizeCanvas = () => {
     const { canvas, container, boardImage } = boardState;
     if (!canvas || !container || !boardImage || !boardImage.complete || boardImage.naturalWidth === 0) return;
+    
+    // Set canvas dimensions to match container exactly
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
+    
+    // Calculate scale to maintain aspect ratio, but always fill the container
     const scaleWidth = containerWidth / ORIGINAL_WIDTH;
     const scaleHeight = containerHeight / ORIGINAL_HEIGHT;
     const scale = Math.max(0.1, Math.min(scaleWidth, scaleHeight)); // Ensure scale is >= 0.1
+    
+    // Update scale in boardState for other functions to use
     boardState.scale = scale;
-    canvas.width = ORIGINAL_WIDTH * scale;
-    canvas.height = ORIGINAL_HEIGHT * scale;
+    
+    // Set canvas dimensions to match container exactly
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    
+    // Draw the board after resizing
+    drawBoard();
 };
 
 /**

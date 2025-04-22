@@ -491,12 +491,14 @@ select, input[type="text"] {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    aspect-ratio: 1536 / 1024; /* Maintain exact aspect ratio */
 }
   
 #board-canvas {
-    object-fit: contain;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;         /* Take up the full width of the container */
+    height: auto;        /* Allow height to adjust proportionally */
+    max-height: 100%;    /* Optional: Prevent the canvas from exceeding the container's height */
+    display: block;     /* Remove any inline spacing */ aspect-ratio: 3 / 2; /* Maintain a 3:2 aspect ratio (adjust as needed) */
     aspect-ratio: 1536 / 1024; /* Maintain exact aspect ratio */
 }
 

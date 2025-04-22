@@ -1,23 +1,20 @@
-import {    
-    handlePlayerAction, // For Roll, End Turn, Ability buttons
-    getGameState, // For checking current state in UI
-    resolvePlayerChoice, // For handling validated clicks on choices
-    resolveBoardClick // For handling board clicks
-} from './game.js';
+// UI Module for Critocracy
+// Handles all user interface elements, events, and updates
+// This can be imported by other modules to make UI updates
 
-// Player Data Imports
-import { getPlayers, getPlayerById, PLAYER_ROLES } from './players.js'; 
-
-// Board Helper Imports
+import { getPlayers, getPlayerById, PLAYER_ROLES } from './players.js';
 import { 
     drawBoard, // To redraw the board
-    scaleCoordinates, // To convert board coords to canvas coords
-    unscaleCoordinates, // To convert canvas clicks to board coords
+    scaleCoordinates, 
+    unscaleCoordinates,
     setupBoard, // To initialize board state (if UI triggers it)
     findSpaceDetailsByCoords, // To get space details by coordinates
     getPathColorFromCoords, // To get path color by coordinates
-    drawPlayerToken // To draw player tokens
-} from './board.js'; 
+    drawPlayerToken, // To draw player tokens
+    synchronizePlayerCoordinates, // For syncing player coordinates
+    refreshPlayerTokens // For refreshing player tokens
+} from './board.js';
+import { handlePlayerAction, resolveBoardClick, resolvePlayerChoice, getGameState } from './game.js';
 
 // Animation Imports
 import { 
@@ -368,7 +365,7 @@ export function setupPlayerCountUI() {
 
 // --- Setup Role Selection UI ---
 export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
-    console.log(`Setting up role selection for ${humanPlayers} human players out of ${totalPlayers} total`);
+    console.log(`Setting up role selection UI for ${totalPlayers} total players (${humanPlayers} human)`);
     
     const roleSelectionContainer = document.getElementById('role-selection-container');
     if (!roleSelectionContainer) {
@@ -456,6 +453,9 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
     // Get available roles
     const availableRoles = Object.keys(PLAYER_ROLES);
     
+    // Define the token directory constant
+    const TOKEN_DIR = 'assets/tokens';
+    
     // Create role selection cards
     let roleCardsHtml = '';
     for (let i = 0; i < humanPlayers; i++) {
@@ -465,15 +465,16 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 <h3>Human Player ${playerNumber}</h3>
                 <div class="role-options">
                     ${availableRoles.map(role => {
-                        // Safely get token path or use a default
-                        const tokenPath = PLAYER_ROLES[role].token || 'default.png';
+                        // Safely get token path with fallback
+                        const tokenFilename = PLAYER_ROLES[role].token || `${role[0]}.png`;
+                        // Use explicit token directory path
                         return `
                         <div class="role-card" data-player="${i}" data-role="${role}">
                             <div class="role-card-inner">
                                 <h4>${PLAYER_ROLES[role].name}</h4>
                                 <div class="role-image">
-                                    <img src="assets/tokens/${tokenPath}" alt="${PLAYER_ROLES[role].name}" 
-                                         onerror="this.onerror=null; this.src='assets/tokens/default.png';">
+                                    <img src="${TOKEN_DIR}/${tokenFilename}" alt="${PLAYER_ROLES[role].name}" 
+                                         onerror="this.onerror=null; this.src='${TOKEN_DIR}/default.png';">
                                 </div>
                                 <p>${PLAYER_ROLES[role].description}</p>
                                 <div class="role-stats">
@@ -1533,7 +1534,16 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
             // Update the player's position immediately in the game state
             // so other functions know where the player is
             player.coords = { x: toCoords[0], y: toCoords[1] };
-            player.currentCoords = { x: toCoords[0], y: toCoords[1] }; // Add this line
+            player.currentCoords = { x: toCoords[0], y: toCoords[1] }; 
+            
+            // Synchronize coordinates and redraw tokens if functions are available
+            if (typeof synchronizePlayerCoordinates === 'function') {
+                synchronizePlayerCoordinates(player);
+            }
+            
+            if (typeof refreshPlayerTokens === 'function') {
+                refreshPlayerTokens(player.id);
+            }
             
             // Animate the token movement
             animateTokenToPosition(player, screenToCoords, () => {
@@ -1542,7 +1552,7 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
                 drawPlayers();
                 
                 // Add a bounce effect at the end of movement
-                const tokenElement = document.getElementById(`player-${player.id}-token`);
+                const tokenElement = document.getElementById(`player-token-${player.id}`);
                 if (tokenElement) {
                     tokenElement.classList.add('animate-bounce');
                     setTimeout(() => {
@@ -1557,6 +1567,11 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
                     spaces: 1 // This could be calculated based on the path
                 });
                 
+                // Ensure player tokens are updated after animation completes
+                if (typeof refreshPlayerTokens === 'function') {
+                    refreshPlayerTokens();
+                }
+                
                 resolve();
             });
         });
@@ -1566,6 +1581,15 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
         const startTime = Date.now();
         const [startX, startY] = fromCoords;
         const [endX, endY] = toCoords;
+        
+        // Update coordinates first
+        player.coords = { x: endX, y: endY };
+        player.currentCoords = { x: endX, y: endY };
+        
+        // Synchronize coordinates if function is available
+        if (typeof synchronizePlayerCoordinates === 'function') {
+            synchronizePlayerCoordinates(player);
+        }
         
         return new Promise(resolve => {
             function animate() {
@@ -1578,12 +1602,17 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
                     drawPlayers(); 
                     
                     // Add a bounce effect at the end of movement
-                    const tokenElement = document.getElementById(`player-${player.id}-token`);
+                    const tokenElement = document.getElementById(`player-token-${player.id}`);
                     if (tokenElement) {
                         tokenElement.classList.add('animate-bounce');
                         setTimeout(() => {
                             tokenElement.classList.remove('animate-bounce');
                         }, 500);
+                    }
+                    
+                    // Ensure player tokens are updated after animation completes
+                    if (typeof refreshPlayerTokens === 'function') {
+                        refreshPlayerTokens();
                     }
                     
                     resolve();
@@ -1754,13 +1783,15 @@ export function safeResizeCanvas() {
  * Update game components and UI elements
  */
 export function updateGameComponents() {
-    // Update player info and controls, but don't draw board or tokens
-    // Board and tokens are handled by HTML
+    console.log("Updating game components...");
+    drawAllPlayerTokens();
     updatePlayerInfo();
     updateGameControls();
     
     // Create player token elements for animations
     createPlayerTokenElements();
+    
+    console.log("Game components updated");
 }
 
 // --- Highlight Management ---
@@ -3030,33 +3061,21 @@ function getEffectDetailsHTML(effect) {
 
 /**
  * Draw all player tokens on the board
- * This function calls the underlying board function to render all player tokens
+ * This function uses createPlayerTokenElements to render player tokens as DOM elements
  */
 export function drawAllPlayerTokens() {
-    // First clear any existing player tokens from the canvas
-    if (elements.gameBoard.ctx) {
-        const canvas = elements.gameBoard.boardCanvas;
-        if (canvas) {
-            // Only clear the player tokens, not the entire board
-            // This requires knowledge of where players are drawn
-            // For simplicity, we'll redraw the entire board
-            drawBoard();
-        }
-    }
+    // Create or update player token DOM elements
+    createPlayerTokenElements();
     
-    // Get all players from the game state
+    // Get all players
     const players = getPlayers();
     if (!players || players.length === 0) {
         console.warn('No players to draw');
         return;
     }
     
-    // Draw each player token at their current position
-    players.forEach(player => {
-        if (player && player.currentCoords) {
-            drawPlayerToken(player, player.currentCoords);
-        }
-    });
+    // Log for debugging
+    console.log(`Updated token elements for ${players.length} players`);
 }
 
 // Add setupBoardUIComponents function
@@ -3395,9 +3414,14 @@ setInterval(forceRoleCardsVisible, 1000);
  * This ensures animations.js can find tokens by ID
  */
 export function createPlayerTokenElements() {
+    const TOKEN_DIR = 'assets/tokens'; // Explicit token directory
+    
     // Get the board container where tokens will be placed
     const boardContainer = document.getElementById('board-container');
-    if (!boardContainer) return;
+    if (!boardContainer) {
+        console.warn("Cannot create player tokens: board container not found");
+        return;
+    }
     
     // Create a container for tokens if it doesn't exist
     let tokenContainer = document.getElementById('player-tokens-container');
@@ -3413,9 +3437,14 @@ export function createPlayerTokenElements() {
         boardContainer.appendChild(tokenContainer);
     }
     
-    // Get all players
-    const players = window.game.getGameState()?.players || [];
-    if (!players.length) return;
+    // Get all players from game state
+    const players = window.game?.getGameState()?.players || [];
+    if (!players.length) {
+        console.warn("No players available to create token elements");
+        return;
+    }
+    
+    console.log(`Creating/updating token elements for ${players.length} players from ${TOKEN_DIR}`);
     
     // For each player, create or update their token element
     players.forEach(player => {
@@ -3433,13 +3462,60 @@ export function createPlayerTokenElements() {
             
             // Create img element for the token
             const tokenImg = document.createElement('img');
-            tokenImg.src = `assets/tokens/${PLAYER_ROLES[player.role]?.token}`;
-            tokenImg.alt = player.name;
+            
+            // Get token filename from player role, with fallback
+            const tokenFilename = PLAYER_ROLES[player.role]?.token || `${player.role[0]}.png`;
+            
+            // Set token source with path explicitly from assets/tokens directory
+            tokenImg.src = `${TOKEN_DIR}/${tokenFilename}`;
+            tokenImg.alt = player.name || player.role;
             tokenImg.style.width = '100%';
             tokenImg.style.height = '100%';
-            token.appendChild(tokenImg);
             
-            // Add to container
+            // Add error handling for token images
+            tokenImg.onerror = () => {
+                console.warn(`Failed to load token image for ${player.name} from ${tokenImg.src}. Using fallback.`);
+                
+                // Create a fallback colored circle with player initial
+                const canvas = document.createElement('canvas');
+                const size = 24; // Default token size
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                
+                if (ctx) {
+                    // Draw colored circle based on role
+                    const colors = {
+                        'HISTORIAN': '#3498db',    // Blue
+                        'REVOLUTIONARY': '#e74c3c', // Red
+                        'COLONIALIST': '#2ecc71',  // Green
+                        'ENTREPRENEUR': '#f1c40f', // Yellow
+                        'POLITICIAN': '#9b59b6',   // Purple
+                        'ARTIST': '#e67e22'        // Orange
+                    };
+                    
+                    const color = colors[player.role] || '#95a5a6'; // Gray fallback
+                    
+                    // Draw circle
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add player initial
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const initial = (player.name || player.role || '?').charAt(0).toUpperCase();
+                    ctx.fillText(initial, size/2, size/2);
+                    
+                    // Use the canvas as the image source
+                    tokenImg.src = canvas.toDataURL();
+                }
+            };
+            
+            token.appendChild(tokenImg);
             tokenContainer.appendChild(token);
         }
         
@@ -3452,4 +3528,295 @@ export function createPlayerTokenElements() {
         // Update role-specific styling
         token.dataset.role = player.role;
     });
+}
+
+// Make createPlayerTokenElements available to other modules via a global object
+// Add this near the top of the file after imports
+window.ui = window.ui || {};
+
+// Add code at the end of the file to expose functionality
+// Add this at the end of the file
+
+// Expose key UI functions globally for other modules to use
+window.ui.createPlayerTokenElements = createPlayerTokenElements;
+window.ui.enableTurnOrderRollButton = enableTurnOrderRollButton;
+window.ui.updateTurnOrderDisplay = updateTurnOrderDisplay;
+window.ui.setupTurnOrderUI = setupTurnOrderUI;
+
+/**
+ * Enable the roll button for turn order determination
+ * @param {string} playerId - ID of the player who should roll
+ */
+export function enableTurnOrderRollButton(playerId) {
+    console.log(`Enabling turn order roll button for player ${playerId}`);
+    
+    // Get the turn order roll button
+    const rollTurnOrderBtn = document.getElementById('roll-turn-order-btn');
+    if (!rollTurnOrderBtn) {
+        console.error("Turn order roll button not found");
+        return;
+    }
+    
+    // Get the player
+    const player = getPlayerById(playerId);
+    if (!player) {
+        console.error(`Player with ID ${playerId} not found`);
+        return;
+    }
+    
+    // Update button text to indicate which player should roll
+    rollTurnOrderBtn.textContent = `${player.name}, Roll the Dice!`;
+    rollTurnOrderBtn.disabled = false;
+    
+    // Highlight the player's card in the turn order display
+    const playerElement = document.querySelector(`.turn-order-player[data-player-id="${playerId}"]`);
+    if (playerElement) {
+        // Remove active class from all players
+        document.querySelectorAll('.turn-order-player').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Add active class to current player
+        playerElement.classList.add('active');
+        
+        // Scroll the player element into view if needed
+        playerElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // Set up event listener for the roll button
+    // Make sure to remove any existing listeners first to prevent duplicates
+    rollTurnOrderBtn.onclick = null;
+    rollTurnOrderBtn.onclick = () => {
+        // Handle the click - roll dice for this player
+        rollTurnOrderBtn.disabled = true;
+        
+        // Import the game module dynamically to avoid circular dependencies
+        import('./game.js').then(game => {
+            const result = game.rollForTurnOrder(playerId);
+            
+            // Animate the dice roll
+            showDiceRollAnimation(result, result);
+            
+            // After a brief delay, hide the animation
+            setTimeout(() => {
+                hideDiceRollAnimation(500);
+            }, 2000);
+        });
+    };
+}
+
+/**
+ * Update the turn order display with current roll results
+ * @param {Object} rollResults - Object mapping player IDs to roll results
+ * @param {boolean} isFinal - Whether this is the final display after all rolls
+ */
+export function updateTurnOrderDisplay(rollResults, isFinal = false) {
+    console.log("Updating turn order display:", rollResults, isFinal ? "(Final)" : "");
+    
+    // Get all player elements in the turn order container
+    const playerElements = document.querySelectorAll('.turn-order-player');
+    if (playerElements.length === 0) {
+        console.warn("No player elements found in turn order container");
+        return;
+    }
+    
+    // Update each player's roll result
+    playerElements.forEach(element => {
+        const playerId = element.getAttribute('data-player-id');
+        if (!playerId) return;
+        
+        const rollResult = rollResults[playerId];
+        const rollResultElement = element.querySelector('.roll-result');
+        
+        if (rollResultElement && rollResult !== undefined) {
+            // Update the roll result
+            rollResultElement.textContent = rollResult;
+            
+            // Highlight the result with animation
+            rollResultElement.classList.remove('highlight-animation');
+            void rollResultElement.offsetWidth; // Trigger reflow to restart animation
+            rollResultElement.classList.add('highlight-animation');
+        }
+    });
+    
+    // If this is the final update, update the order indicators and finalize UI
+    if (isFinal) {
+        // Sort players by roll results
+        const sortedPlayerIds = Object.keys(rollResults).sort((a, b) => rollResults[b] - rollResults[a]);
+        
+        // Update order indicators
+        sortedPlayerIds.forEach((playerId, index) => {
+            const playerElement = document.querySelector(`.turn-order-player[data-player-id="${playerId}"]`);
+            if (!playerElement) return;
+            
+            const orderIndicator = playerElement.querySelector('.order-indicator');
+            if (orderIndicator) {
+                orderIndicator.textContent = `${index + 1}`;
+                
+                // Add visual indicator for turn order
+                playerElement.style.order = index;
+                
+                // Add highlight based on position
+                if (index === 0) {
+                    playerElement.classList.add('first-player');
+                } else {
+                    playerElement.classList.remove('first-player');
+                }
+            }
+        });
+        
+        // Show a continue button to advance to the game screen
+        const turnOrderContainer = document.getElementById('turn-order-container');
+        if (turnOrderContainer) {
+            // Check if button already exists
+            let continueButton = document.getElementById('continue-to-game-btn');
+            
+            if (!continueButton) {
+                continueButton = document.createElement('button');
+                continueButton.id = 'continue-to-game-btn';
+                continueButton.className = 'action-button';
+                continueButton.textContent = 'Continue to Game';
+                
+                continueButton.onclick = () => {
+                    showScreen('game-board-screen');
+                };
+                
+                turnOrderContainer.appendChild(continueButton);
+            }
+            
+            // Show the button
+            continueButton.style.display = 'block';
+        }
+    }
+}
+
+// --- Export UI Functions to Global Scope ---
+// This allows other modules to access UI functions without imports
+
+// Create the UI namespace if it doesn't exist
+window.ui = window.ui || {};
+
+// Expose key UI functions globally for other modules to use
+window.ui.showScreen = showScreen;
+window.ui.hideScreen = hideScreen;
+window.ui.updatePlayerInfo = updatePlayerInfo;
+window.ui.logMessage = logMessage;
+window.ui.showCard = showCard;
+window.ui.hideCard = hideCard;
+window.ui.showCardPopup = showCardPopup;
+window.ui.updateGameControls = updateGameControls;
+window.ui.promptForTradeResponse = promptForTradeResponse;
+window.ui.promptTargetSelection = promptTargetSelection;
+window.ui.createPlayerTokenElements = createPlayerTokenElements;
+window.ui.enableTurnOrderRollButton = enableTurnOrderRollButton;
+window.ui.updateTurnOrderDisplay = updateTurnOrderDisplay;
+window.ui.setupTurnOrderUI = setupTurnOrderUI;
+
+/**
+ * Set up the role selection UI with proper styles and event handlers
+ * @param {number} totalPlayers - Total number of players in the game
+ * @param {number} humanPlayers - Number of human players
+ */
+
+
+/**
+ * Set up the turn order screen UI
+ * This function creates player elements for the turn order determination
+ */
+export function setupTurnOrderUI() {
+    console.log("Setting up turn order UI");
+    
+    // Get the turn order container
+    const container = document.getElementById('turn-order-container');
+    if (!container) {
+        console.error("Turn order container not found");
+        return;
+    }
+    
+    // Clear any existing content
+    container.innerHTML = '';
+    
+    // Create header
+    const header = document.createElement('h2');
+    header.textContent = 'Roll for Turn Order';
+    container.appendChild(header);
+    
+    // Create explanation text
+    const explanation = document.createElement('p');
+    explanation.className = 'turn-order-explanation';
+    explanation.textContent = 'Each player will roll the dice. The highest roll goes first.';
+    container.appendChild(explanation);
+    
+    // Create player container
+    const playersContainer = document.createElement('div');
+    playersContainer.className = 'turn-order-players';
+    container.appendChild(playersContainer);
+    
+    // Get all players
+    const players = getPlayers();
+    
+    // Create player elements
+    players.forEach(player => {
+        const playerElement = document.createElement('div');
+        playerElement.className = 'turn-order-player';
+        playerElement.setAttribute('data-player-id', player.id);
+        
+        // Player name and role
+        const nameElement = document.createElement('div');
+        nameElement.className = 'player-name';
+        nameElement.textContent = `${player.name} (${player.role})`;
+        
+        // Roll result
+        const rollResult = document.createElement('div');
+        rollResult.className = 'roll-result';
+        rollResult.textContent = '?';
+        
+        // Order indicator
+        const orderIndicator = document.createElement('div');
+        orderIndicator.className = 'order-indicator';
+        orderIndicator.textContent = '-';
+        
+        // Append elements
+        playerElement.appendChild(nameElement);
+        playerElement.appendChild(rollResult);
+        playerElement.appendChild(orderIndicator);
+        
+        // Append to players container
+        playersContainer.appendChild(playerElement);
+    });
+    
+    // Create roll button
+    const rollButton = document.createElement('button');
+    rollButton.id = 'roll-turn-order-btn';
+    rollButton.className = 'action-button';
+    rollButton.textContent = 'Click to Roll';
+    rollButton.disabled = true; // Initially disabled until game logic enables it
+    
+    // Add the roll button to the container
+    container.appendChild(rollButton);
+    
+    // Add CSS for animation
+    const style = document.createElement('style');
+    style.textContent = `
+        .highlight-animation {
+            animation: highlight-pulse 1s ease-in-out;
+        }
+        
+        @keyframes highlight-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); background-color: #FFDD00; }
+            100% { transform: scale(1); }
+        }
+        
+        .first-player {
+            border: 3px solid gold;
+            box-shadow: 0 0 15px gold;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    console.log("Turn order UI setup complete");
+    
+    // Expose the turn order UI setup function for other modules
+    window.ui.setupTurnOrderUI = setupTurnOrderUI;
 }

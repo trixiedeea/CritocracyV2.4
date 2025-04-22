@@ -13,7 +13,8 @@ import {
 import { 
     setupBoard, getNextStepOptions, 
     startMoveAnimation, highlightPlayerChoices, getPathColorFromCoords,
-    highlightEndOfTurnCardBoxes
+    highlightEndOfTurnCardBoxes, refreshPlayerTokens,
+    synchronizePlayerCoordinates, findSpaceDetailsByCoords, clearHighlights
 } from './board.js';
 import { 
     setupDecks, drawCard, 
@@ -24,8 +25,8 @@ import {
     logMessage, updatePlayerInfo, clearMessages, 
     updateGameControls, showCardPopup, promptForTradeResponse,
     hideDiceRollAnimation, updateGameComponents,
-    clearHighlights, highlightChoices,
-    showEndGameScreen, animatePlayerMovement, highlightDeck
+    highlightChoices, createPlayerTokenElements,
+    showEndGameScreen
 } from './ui.js';
 import {
     initLogging, logGameEvent, logPlayerAction, 
@@ -498,229 +499,102 @@ async function handleEndOfTurnCardDraw(boxNumber) {
 export function resolvePlayerChoice(playerId, choice) {
     const player = getPlayerById(playerId);
     if (!player) {
-        console.error(`Cannot resolve choice: Player ${playerId} not found`);
-        return false;
+        console.error(`Player with ID ${playerId} not found`);
+        return;
     }
-    
-    const gameState = getGameState();
-    
-    // Only process choices when in appropriate states
-    if (gameState.turnState !== 'AWAITING_START_CHOICE' && 
-        gameState.turnState !== 'AWAITING_CHOICEPOINT') {
-        console.error(`Cannot resolve choice: Invalid game state ${gameState.turnState}`);
-        return false;
+
+    if (gameState.gamePhase !== 'PLAYER_CHOICE') {
+        console.error(`Cannot resolve player choice during ${gameState.gamePhase} phase`);
+        return;
     }
+
+    // Update player position
+    console.log(`Player ${player.name} chose to move to [${choice.coordinates}]`);
+    player.coords = choice.coordinates;
     
-    console.log(`Resolving choice for player ${player.name}:`, choice);
+    // Synchronize coordinates and refresh tokens
+    synchronizePlayerCoordinates(player.id);
+    createPlayerTokenElements();
+    refreshPlayerTokens();
     
-    // Clear any existing highlights
-    if (typeof clearHighlights === 'function') {
-        clearHighlights();
+    // Show animation
+    startMoveAnimation(player.id, choice.coordinates);
+    
+    // Process the player's choice
+    processChoice(player, choice);
+}
+
+/**
+ * Processes a player's choice at a junction or start space
+ * @param {Object} player - The player making the choice
+ * @param {Object} choice - The choice object containing path and coordinates
+ */
+function processChoice(player, choice) {
+    if (!player || !choice) {
+        console.error("Invalid parameters for processChoice");
+        return;
     }
+
+    console.log(`Processing choice for ${player.name}:`, choice);
     
-    // If no choice provided or invalid choice, do nothing
-    if (!choice || !choice.coordinates) {
-        console.error('Invalid choice provided');
-        return false;
-    }
-    
-    // Set player position to the chosen coordinates
-    const coords = {
-        x: choice.coordinates[0],
-        y: choice.coordinates[1]
-    };
-    
-    // If player has a previous position, animate movement to new position
-    if (player.coords && typeof animatePlayerMovement === 'function') {
-        const fromCoords = [player.coords.x, player.coords.y];
-        const toCoords = [coords.x, coords.y];
+    // Update the player's current path if a choice was made
+    if (choice.pathColor) {
+        player.currentPath = choice.pathColor;
         
-        // Animate the player movement
-        animatePlayerMovement(player, fromCoords, toCoords).then(() => {
-            // After animation completes, continue with next game action
-            
-            // Update player's position
-            updatePlayerCoordinates(player, coords);
-            
-            // Update game state
-            if (gameState.turnState === 'AWAITING_START_CHOICE') {
-                // If this was the initial path choice, update player's path
-                player.currentPath = choice.pathColor || 'default';
-                gameState.turnState = 'ACTION_COMPLETE';
-            } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
-                // For CPU players, follow rules from game outline:
-                // 1. Will not intentionally change paths unless forced
-                // 2. Will land on no more than 2 special event spaces in the game
-                if (!player.isHuman) {
-                    // For path changes, stick to current path if possible
-                    if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                        // Initialize specialEventCount if not exists
-                        player.specialEventCount = player.specialEventCount || 0;
-                        
-                        // Check if this is a draw space
-                        const isDrawSpace = choice.type === 'draw';
-                        
-                        // CPU only changes path if:
-                        // 1. It's forced to change paths
-                        // 2. OR staying on current path would exceed special event limit
-                        const shouldChangePath = 
-                            player.forcedPathChange || 
-                            (isDrawSpace && player.specialEventCount >= 2 && 
-                             choice.pathColor !== player.currentPath);
-                        
-                        if (shouldChangePath) {
-                            logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                            player.currentPath = choice.pathColor;
-                            // Reset forced path change flag if it was set
-                            player.forcedPathChange = false;
-                        } else {
-                            // Try to find another choice that keeps current path
-                            const currentPathChoice = gameState.currentChoices.find(c => 
-                                c.pathColor === player.currentPath);
-                            
-                            if (currentPathChoice) {
-                                // Recursively resolve with the current path choice instead
-                                return resolvePlayerChoice(playerId, currentPathChoice);
-                            }
-                        }
-                    }
-                } else {
-                    // For human players, respect their choice
-                    if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                        logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                        player.currentPath = choice.pathColor;
-                    }
-                }
-                
-                // Handle special event spaces
-                if (choice.type === 'draw') {
-                    gameState.turnState = 'AWAITING_PATH_CARD';
-                    logMessage(`${player.name} landed on a Draw space`);
-                    
-                    // For CPU players, track special event count
-                    if (!player.isHuman) {
-                        player.specialEventCount = (player.specialEventCount || 0) + 1;
-                    }
-                    
-                    // If human player, highlight the deck to draw from
-                    if (player.isHuman) {
-                        const deckColor = choice.pathColor || player.currentPath;
-                        if (typeof highlightDeck === 'function') {
-                            highlightDeck(deckColor);
-                        }
-                    } else {
-                        // For CPU players, automatically draw the card
-                        handlePlayerAction(playerId, 'DRAW_PATH_CARD', { deckColor: choice.pathColor || player.currentPath });
-                    }
-                } else {
-                    // Regular space - just move to end of turn
-                    gameState.turnState = 'ACTION_COMPLETE';
-                    
-                    // If human player, prompt to draw end of turn card
-                    if (player.isHuman) {
-                        gameState.turnState = 'AWAITING_END_OF_TURN_CARD';
-                        logMessage('Click on an End of Turn card to draw');
-                    } else {
-                        // CPU draws end of turn card automatically
-                        handlePlayerAction(playerId, 'DRAW_END_OF_TURN_CARD');
-                    }
-                }
-            }
-            
-            // Update game UI
-            updateGameComponents();
+        // Log the choice of path
+        logPlayerAction(player.id, 'PATH_CHOSEN', {
+            pathColor: choice.pathColor,
+            coordinates: choice.coordinates,
+            choiceType: choice.type || 'unknown'
         });
-    } else {
-        // No animation, just update position immediately
-        updatePlayerCoordinates(player, coords);
         
-        // Update game state
-        if (gameState.turnState === 'AWAITING_START_CHOICE') {
-            player.currentPath = choice.pathColor || 'default';
-            gameState.turnState = 'ACTION_COMPLETE';
-        } else if (gameState.turnState === 'AWAITING_CHOICEPOINT') {
-            // Same logic for CPU vs human players as above
-            if (!player.isHuman) {
-                // For CPU players, follow the rules from the game outline
-                // Initialize specialEventCount if not exists
-                player.specialEventCount = player.specialEventCount || 0;
-                
-                // Check if this would change paths
-                if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                    // For draw spaces, track special event count
-                    const isDrawSpace = choice.type === 'draw';
-                    
-                    // CPU only changes path if forced or to avoid exceeding special event limit
-                    const shouldChangePath = 
-                        player.forcedPathChange || 
-                        (isDrawSpace && player.specialEventCount >= 2 && 
-                         choice.pathColor !== player.currentPath);
-                    
-                    if (shouldChangePath) {
-                        logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                        player.currentPath = choice.pathColor;
-                        player.forcedPathChange = false;
-                    } else {
-                        // Try to find another choice that keeps current path
-                        const currentPathChoice = gameState.currentChoices.find(c => 
-                            c.pathColor === player.currentPath);
-                        
-                        if (currentPathChoice) {
-                            // Process with the current path choice instead
-                            coords.x = currentPathChoice.coordinates[0];
-                            coords.y = currentPathChoice.coordinates[1];
-                            updatePlayerCoordinates(player, coords);
-                            choice = currentPathChoice;
-                        }
-                    }
-                }
-            } else {
-                // For human players, respect their choice
-                if (choice.pathColor && choice.pathColor !== player.currentPath) {
-                    logMessage(`${player.name} changed path to ${getDeckTypeForSpace(choice.pathColor)}`);
-                    player.currentPath = choice.pathColor;
-                }
-            }
-            
-            // Handle special event spaces
-            if (choice.type === 'draw') {
-                gameState.turnState = 'AWAITING_PATH_CARD';
-                logMessage(`${player.name} landed on a Draw space`);
-                
-                // For CPU players, track special event count
-                if (!player.isHuman) {
-                    player.specialEventCount = (player.specialEventCount || 0) + 1;
-                }
-                
-                // If human player, highlight the deck to draw from
-                if (player.isHuman) {
-                    const deckColor = choice.pathColor || player.currentPath;
-                    if (typeof highlightDeck === 'function') {
-                        highlightDeck(deckColor);
-                    }
-                } else {
-                    // For CPU players, automatically draw the card
-                    handlePlayerAction(playerId, 'DRAW_PATH_CARD', { deckColor: choice.pathColor || player.currentPath });
-                }
-            } else {
-                // Regular space
-                gameState.turnState = 'ACTION_COMPLETE';
-                
-                if (player.isHuman) {
-                    gameState.turnState = 'AWAITING_END_OF_TURN_CARD';
-                    logMessage('Click on an End of Turn card to draw');
-                } else {
-                    // CPU draws end of turn card automatically
-                    handlePlayerAction(playerId, 'DRAW_END_OF_TURN_CARD');
-                }
-            }
-        }
-        
-        // Update game UI
-        updateGameComponents();
+        logMessage(`${player.name} chose the ${choice.pathColor} path.`);
     }
     
-    return true;
+    // Get space details at the chosen coordinates
+    const spaceDetails = findSpaceDetailsByCoords(choice.coordinates);
+    
+    // Handle different types of choices
+    if (choice.type === 'start') {
+        // Player has chosen a starting path
+        console.log(`${player.name} has chosen their starting path: ${choice.pathColor}`);
+        
+        // Move to action complete state after choice is made
+        gameState.turnState = 'ACTION_COMPLETE';
+        updateGameControls();
+    } 
+    else if (choice.type === 'junction' || choice.type === 'choicepoint') {
+        // Player has chosen a path at a junction
+        console.log(`${player.name} has chosen a path at a junction: ${choice.pathColor}`);
+        
+        // If there are remaining steps after the choice point, continue movement
+        if (gameState.choicePointRemainingSteps > 0) {
+            console.log(`${player.name} has ${gameState.choicePointRemainingSteps} steps remaining after junction`);
+            // Continue movement with remaining steps
+            setTimeout(() => {
+                startMoveAnimation(player.id, gameState.choicePointRemainingSteps, (result) => {
+                    handleEndOfMove(player.id, result);
+                });
+            }, 500);
+        } else {
+            // No remaining steps, end the move
+            const moveResult = {
+                success: true,
+                spaceDetails: spaceDetails || { type: 'unknown' },
+                options: []
+            };
+            handleEndOfMove(player.id, moveResult);
+        }
+    }
+    else {
+        // Unknown choice type, end the move
+        console.warn(`Unknown choice type: ${choice.type}`);
+        gameState.turnState = 'ACTION_COMPLETE';
+        updateGameControls();
+    }
+    
+    // Clear highlights after choice is made
+    clearHighlights();
 }
 
 /**
@@ -1417,6 +1291,201 @@ export async function handleDiceRoll(playerId) {
     return true;
 }
 
+/**
+ * Determine turn order by rolling dice for each player
+ * Human players will be prompted to roll, CPU players will roll automatically
+ * @returns {Promise<boolean>} True if the turn order was successfully determined
+ */
+export async function determineTurnOrder() {
+    console.log("Determining turn order by rolling dice");
+    
+    // Get all players
+    const players = getPlayers();
+    if (!players || players.length === 0) {
+        console.error("No players found for determining turn order");
+        return false;
+    }
+    
+    // Create object to store roll results
+    const rollResults = {};
+    
+    // Set game phase to turn order determination
+    gameState.gamePhase = 'TURN_ORDER_DETERMINATION';
+    
+    // Function to handle individual player rolls
+    const handlePlayerRoll = (player) => {
+        return new Promise(resolve => {
+            // For human players, show roll button and wait for click
+            if (player.isHuman) {
+                // Show message to prompt human player
+                logMessage(`${player.name}, click to roll the dice`);
+                
+                // This should be handled by the UI - the human player clicks the roll button
+                // and the UI will call the rollForTurnOrder function
+                
+                // Listen for the roll (this would be handled by UI event listeners)
+                window.currentTurnOrderRollCallback = (result) => {
+                    rollResults[player.id] = result;
+                    logMessage(`${player.name} rolled ${result}!`, 'dice');
+                    resolve();
+                };
+                
+                // Enable roll button for this player (UI should handle this)
+                if (window.ui && typeof window.ui.enableTurnOrderRollButton === 'function') {
+                    window.ui.enableTurnOrderRollButton(player.id);
+                } else {
+                    // If no UI handler, simulate a roll automatically as fallback
+                    setTimeout(() => {
+                        const result = Math.floor(Math.random() * 6) + 1;
+                        rollResults[player.id] = result;
+                        logMessage(`${player.name} rolled ${result}!`, 'dice');
+                        resolve();
+                    }, 500);
+                }
+            } else {
+                // For CPU players, automatically roll after a slight delay
+                setTimeout(() => {
+                    const result = Math.floor(Math.random() * 6) + 1;
+                    rollResults[player.id] = result;
+                    logMessage(`${player.name} (CPU) rolled ${result}!`, 'dice');
+                    resolve();
+                }, 800 + Math.random() * 500); // Random delay between 800-1300ms
+            }
+        });
+    };
+    
+    // Function to roll for all players
+    const rollForAllPlayers = async () => {
+        for (const player of players) {
+            await handlePlayerRoll(player);
+            
+            // Update UI to show current roll results
+            updateTurnOrderDisplay(rollResults);
+        }
+    };
+    
+    // Roll for all players
+    await rollForAllPlayers();
+    
+    // Handle ties by re-rolling just for tied players
+    let tiedPlayers = findTiedPlayers(rollResults);
+    while (tiedPlayers.length > 1) {
+        logMessage("Ties detected! Re-rolling for tied players...");
+        
+        // Re-roll for tied players only
+        for (const player of tiedPlayers) {
+            await handlePlayerRoll(player);
+            updateTurnOrderDisplay(rollResults);
+        }
+        
+        // Check for ties again
+        tiedPlayers = findTiedPlayers(rollResults);
+    }
+    
+    // Sort players by their roll results (highest to lowest)
+    const sortedPlayers = [...players].sort((a, b) => {
+        return rollResults[b.id] - rollResults[a.id];
+    });
+    
+    // Set the turn order
+    gameState.turnOrder = sortedPlayers.map(player => player.id);
+    
+    // Set the current player to the first player in the turn order
+    gameState.currentPlayerId = gameState.turnOrder[0];
+    
+    // Log the determined turn order
+    logMessage("Turn order determined!");
+    gameState.turnOrder.forEach((playerId, index) => {
+        const player = getPlayerById(playerId);
+        logMessage(`${index + 1}. ${player.name} (${rollResults[playerId]})`);
+    });
+    
+    // Update UI to reflect final turn order
+    updateTurnOrderDisplay(rollResults, true);
+    
+    // Log game event
+    logGameEvent('TURN_ORDER_DETERMINED', {
+        turnOrder: gameState.turnOrder.map(id => ({ 
+            id, 
+            name: getPlayerById(id)?.name,
+            roll: rollResults[id]
+        }))
+    });
+    
+    // Set game phase back to playing
+    gameState.gamePhase = 'PLAYING';
+    
+    // Start first player's turn
+    prepareTurnForPlayer(getPlayerById(gameState.currentPlayerId));
+    
+    return true;
+}
+
+/**
+ * Helper function to find tied players (players with the same highest roll)
+ * @param {Object} rollResults - Object mapping player IDs to roll results
+ * @returns {Array} Array of players who are tied
+ */
+function findTiedPlayers(rollResults) {
+    const players = getPlayers();
+    
+    // Group players by roll value
+    const rollGroups = {};
+    
+    players.forEach(player => {
+        const roll = rollResults[player.id];
+        if (!rollGroups[roll]) {
+            rollGroups[roll] = [];
+        }
+        rollGroups[roll].push(player);
+    });
+    
+    // Find the highest roll
+    const highestRoll = Math.max(...Object.keys(rollGroups).map(Number));
+    
+    // Return players with the highest roll if there are multiple
+    return rollGroups[highestRoll].length > 1 ? rollGroups[highestRoll] : [];
+}
+
+/**
+ * Update the turn order display in the UI
+ * @param {Object} rollResults - Object mapping player IDs to roll results
+ * @param {boolean} isFinal - Whether this is the final display after all rolls
+ */
+function updateTurnOrderDisplay(rollResults, isFinal = false) {
+    // This function should be implemented in the UI module
+    // It should update the UI to show the current roll results
+    if (window.ui && typeof window.ui.updateTurnOrderDisplay === 'function') {
+        window.ui.updateTurnOrderDisplay(rollResults, isFinal);
+    } else {
+        console.log("Turn order display update:", rollResults, isFinal ? "(Final)" : "");
+    }
+}
+
+/**
+ * Function for UI to call when a human player rolls for turn order
+ * @param {string} playerId - ID of the player rolling
+ * @returns {number} The dice roll result
+ */
+export function rollForTurnOrder(playerId) {
+    const player = getPlayerById(playerId);
+    if (!player) {
+        console.error(`Cannot roll for turn order: Player ${playerId} not found`);
+        return 0;
+    }
+    
+    // Roll the dice
+    const result = Math.floor(Math.random() * 6) + 1;
+    
+    // If there's a callback waiting for this roll, invoke it
+    if (typeof window.currentTurnOrderRollCallback === 'function') {
+        window.currentTurnOrderRollCallback(result);
+        window.currentTurnOrderRollCallback = null;
+    }
+    
+    return result;
+}
+
 export function handleRoleConfirmation() {
     // This function is not needed anymore as initialization happens directly from the index.html file
     console.log("Role confirmation handled directly by the HTML/UI layer");
@@ -1438,15 +1507,4 @@ export function handleAbilityUse() {
 
 export function handleNewGame() {
     window.location.reload();
-}
-
-// Helper function to update player coordinates consistently
-function updatePlayerCoordinates(player, coords) {
-    if (!player || !coords) return;
-    
-    // Update both coordinate properties to ensure compatibility
-    player.coords = coords;
-    player.currentCoords = { ...coords };
-    
-    console.log(`Updated player ${player.name} coordinates to:`, coords);
 }
