@@ -24,7 +24,7 @@ import {
     logMessage, updatePlayerInfo, clearMessages, 
     updateGameControls, showCardPopup, promptForTradeResponse,
     hideDiceRollAnimation, updateGameComponents,
-    clearHighlights, showScreen, highlightChoices,
+    clearHighlights, highlightChoices,
     showEndGameScreen, animatePlayerMovement, highlightDeck
 } from './ui.js';
 import {
@@ -1418,47 +1418,8 @@ export async function handleDiceRoll(playerId) {
 }
 
 export function handleRoleConfirmation() {
-    // Query for selected roles from the role selection screen
-    const selectedRoleCard = document.querySelector('.role-card.grid-item.selected');
-    
-    if (!selectedRoleCard) {
-        console.error("No role card selected!");
-        return;
-    }
-    
-    const selectedRole = selectedRoleCard.querySelector('.role-select').getAttribute('data-role');
-    const humanPlayerName = "Player"; // This could be customized in a more advanced UI
-    
-    // Get total players and human player count from the selection screen
-    const totalPlayerCount = parseInt(document.getElementById('total-player-count').value) || 6;
-    const humanPlayerCount = parseInt(document.getElementById('human-player-count').value) || 1;
-    
-    console.log(`Role confirmation: ${selectedRole} selected with ${totalPlayerCount} total players (${humanPlayerCount} human)`);
-    
-    // Create player configurations array
-    const playerConfigs = [];
-    
-    // Add the human player with selected role
-    playerConfigs.push({
-        name: humanPlayerName,
-        role: selectedRole,
-        isHuman: true
-    });
-    
-    // Game will automatically assign roles to remaining CPU players in initializeGame
-    
-    if (playerConfigs.length > 0) {
-        console.log("Initializing game with player configurations:", playerConfigs);
-        const gameInitialized = initializeGame(playerConfigs);
-        
-        if (gameInitialized) {
-            showScreen('game-board-screen');
-        } else {
-            console.error("Failed to initialize game");
-        }
-    } else {
-        console.error("No player configurations created!");
-    }
+    // This function is not needed anymore as initialization happens directly from the index.html file
+    console.log("Role confirmation handled directly by the HTML/UI layer");
 }
 
 export function handleEndTurn() {

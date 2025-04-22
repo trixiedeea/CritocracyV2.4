@@ -393,36 +393,21 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                     isHuman: true
                 });
                 
-                // Get remaining available roles for AI players
-                const availableRoles = Object.keys(PLAYER_ROLES);
-                const remainingRoles = availableRoles.filter(role => 
-                    role !== selectedRole.toUpperCase()
-                );
+                // For single player mode, we only need 1 player (the human player)
+                // Don't add any AI players if we're in single player mode
+                console.log(`Single player mode selected - initialization will be handled by the Roll Dice button`);
                 
-                // Add AI players with random roles from remaining
-                // Make sure we only add enough AI players to reach totalPlayers (not beyond)
-                const aiPlayersToAdd = totalPlayers - 1; // Subtract 1 for the human player
-                for (let i = 0; i < aiPlayersToAdd && i < remainingRoles.length; i++) {
-                    const randomIndex = Math.floor(Math.random() * remainingRoles.length);
-                    const aiRole = remainingRoles.splice(randomIndex, 1)[0];
-                    
-                    playerConfigs.push({
-                        name: `AI ${i+1}`,
-                        role: aiRole,
-                        isHuman: false
-                    });
+                // Just switch to the turn order screen, actual initialization happens when Roll Dice is clicked
+                showScreen('turn-order-screen');
+                
+                // Set up the turn order screen content
+                const turnOrderContainer = document.getElementById('turn-order-container');
+                if (turnOrderContainer) {
+                    turnOrderContainer.innerHTML = `
+                        <h3>Your selected role: ${selectedRole.toUpperCase()}</h3>
+                        <p>Click "Roll Dice" to determine turn order and start the game</p>
+                    `;
                 }
-                
-                console.log(`Creating game with ${playerConfigs.length} players (${totalPlayers} expected)`);
-                
-                // Start the game with the selected roles
-                initializeGame(playerConfigs).then(success => {
-                    if (success) {
-                        showScreen('game-board-screen');
-                    } else {
-                        alert("Failed to start the game. Please try again.");
-                    }
-                });
             });
         }
         
@@ -577,14 +562,26 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
                 });
             }
             
-            // Start the game with the selected roles
-            initializeGame(playerConfigs).then(success => {
-                if (success) {
-                    showScreen('game-board-screen');
-                } else {
-                    alert("Failed to start the game. Please try again.");
-                }
-            });
+            // Store player configs in session storage for the HTML initialization flow
+            sessionStorage.setItem('playerConfigs', JSON.stringify(playerConfigs));
+            
+            // Just switch to the turn order screen, actual initialization happens when Roll Dice is clicked
+            showScreen('turn-order-screen');
+            
+            // Set up the turn order screen content
+            const turnOrderContainer = document.getElementById('turn-order-container');
+            if (turnOrderContainer) {
+                const humanPlayerInfo = playerConfigs
+                    .filter(config => config.isHuman)
+                    .map(config => `<p>${config.name}: ${config.role}</p>`)
+                    .join('');
+                
+                turnOrderContainer.innerHTML = `
+                    <h3>Selected Roles:</h3>
+                    ${humanPlayerInfo}
+                    <p>Click "Roll Dice" to determine turn order and start the game</p>
+                `;
+            }
         });
     }
 }

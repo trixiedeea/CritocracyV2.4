@@ -386,12 +386,34 @@
                                 ]).then(() => {
                                     // Now import the game module and initialize the game
                                     import('./js/game.js').then(gameModule => {
-                                        // Create player configurations with the selected role
-                                        const playerConfigs = [{
-                                            name: "Player 1", 
-                                            role: roleData,
-                                            isHuman: true
-                                        }];
+                                        // Check if we have player configs in session storage (from multi-player setup)
+                                        let playerConfigs;
+                                        const savedConfigs = sessionStorage.getItem('playerConfigs');
+                                        
+                                        if (savedConfigs) {
+                                            // Use the stored configs from multi-player setup
+                                            try {
+                                                playerConfigs = JSON.parse(savedConfigs);
+                                                console.log("Using stored player configurations:", playerConfigs);
+                                            } catch (e) {
+                                                console.error("Error parsing stored player configs:", e);
+                                                playerConfigs = null;
+                                            }
+                                        }
+                                        
+                                        // If no stored configs, create a single player config with the selected role
+                                        if (!playerConfigs) {
+                                            // Create player configurations with the selected role
+                                            playerConfigs = [{
+                                                name: "Player 1", 
+                                                role: roleData,
+                                                isHuman: true
+                                            }];
+                                            console.log("Using default single player configuration:", playerConfigs);
+                                        }
+                                        
+                                        // Clear the session storage to prevent reusing these configs
+                                        sessionStorage.removeItem('playerConfigs');
                                         
                                         // Initialize the game with the player configuration
                                         gameModule.initializeGame(playerConfigs).then(success => {
