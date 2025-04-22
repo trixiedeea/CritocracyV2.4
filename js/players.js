@@ -118,7 +118,8 @@ export const createPlayer = (name, role, isHuman = false) => {
         name,
         role,
         isHuman,
-        coords: { ...startCoords }, // Standardized to 'coords'
+        coords: { ...startCoords }, // Original property
+        currentCoords: { ...startCoords }, // Add this for animations.js compatibility
         resources: { ...PLAYER_ROLES[role].startingResources },
         finished: false,
         skipTurns: 0, // Use number for multiple skips

@@ -1003,6 +1003,15 @@ export const setupBoard = async () => {
         }
     });
     
+    // Expose board functions globally for animations.js to use
+    window.board = {
+        animateTokenToPosition,
+        drawBoard,
+        getPlayers,
+        drawPlayerToken,
+        drawAllPlayerTokens
+    };
+    
     console.log("Board setup complete.")
     return { ctx, canvas };
 };

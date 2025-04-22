@@ -1533,6 +1533,7 @@ export async function animatePlayerMovement(player, fromCoords, toCoords) {
             // Update the player's position immediately in the game state
             // so other functions know where the player is
             player.coords = { x: toCoords[0], y: toCoords[1] };
+            player.currentCoords = { x: toCoords[0], y: toCoords[1] }; // Add this line
             
             // Animate the token movement
             animateTokenToPosition(player, screenToCoords, () => {
@@ -1757,6 +1758,9 @@ export function updateGameComponents() {
     // Board and tokens are handled by HTML
     updatePlayerInfo();
     updateGameControls();
+    
+    // Create player token elements for animations
+    createPlayerTokenElements();
 }
 
 // --- Highlight Management ---
@@ -3385,3 +3389,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Also call periodically to ensure they stay visible
 setInterval(forceRoleCardsVisible, 1000);
+
+/**
+ * Creates or updates player token DOM elements for use with animations
+ * This ensures animations.js can find tokens by ID
+ */
+function createPlayerTokenElements() {
+    // Get the board container where tokens will be placed
+    const boardContainer = document.getElementById('board-container');
+    if (!boardContainer) return;
+    
+    // Create a container for tokens if it doesn't exist
+    let tokenContainer = document.getElementById('player-tokens-container');
+    if (!tokenContainer) {
+        tokenContainer = document.createElement('div');
+        tokenContainer.id = 'player-tokens-container';
+        tokenContainer.style.position = 'absolute';
+        tokenContainer.style.top = '0';
+        tokenContainer.style.left = '0';
+        tokenContainer.style.width = '100%';
+        tokenContainer.style.height = '100%';
+        tokenContainer.style.pointerEvents = 'none'; // Don't intercept clicks
+        boardContainer.appendChild(tokenContainer);
+    }
+    
+    // Clear existing tokens
+    tokenContainer.innerHTML = '';
+    
+    // Get all players
+    const players = window.game.getGameState()?.players || [];
+    
+    // Create a token element for each player
+    players.forEach(player => {
+        if (!player || !player.role) return;
+        
+        // Create token element
+        const token = document.createElement('div');
+        token.id = `player-token-${player.id}`;
+        token.className = 'player-token';
+        token.style.position = 'absolute';
+        
+        // Set initial position
+        if (player.currentCoords) {
+            token.style.left = `${player.currentCoords.x}px`;
+            token.style.top = `${player.currentCoords.y}px`;
+        }
+        
+        // Add role-specific styling
+        token.dataset.role = player.role;
+        
+        // Create img element for the token
+        const tokenImg = document.createElement('img');
+        tokenImg.src = `assets/tokens/${PLAYER_ROLES[player.role]?.token}`;
+        tokenImg.alt = player.name;
+        tokenImg.style.width = '100%';
+        tokenImg.style.height = '100%';
+        token.appendChild(tokenImg);
+        
+        // Add to container
+        tokenContainer.appendChild(token);
+    });
+    
+    console.log(`Created ${players.length} player token elements for animations`);
+}

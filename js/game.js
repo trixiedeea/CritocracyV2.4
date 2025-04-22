@@ -540,7 +540,7 @@ export function resolvePlayerChoice(playerId, choice) {
             // After animation completes, continue with next game action
             
             // Update player's position
-            player.coords = coords;
+            updatePlayerCoordinates(player, coords);
             
             // Update game state
             if (gameState.turnState === 'AWAITING_START_CHOICE') {
@@ -632,7 +632,7 @@ export function resolvePlayerChoice(playerId, choice) {
         });
     } else {
         // No animation, just update position immediately
-        player.coords = coords;
+        updatePlayerCoordinates(player, coords);
         
         // Update game state
         if (gameState.turnState === 'AWAITING_START_CHOICE') {
@@ -669,7 +669,7 @@ export function resolvePlayerChoice(playerId, choice) {
                             // Process with the current path choice instead
                             coords.x = currentPathChoice.coordinates[0];
                             coords.y = currentPathChoice.coordinates[1];
-                            player.coords = coords;
+                            updatePlayerCoordinates(player, coords);
                             choice = currentPathChoice;
                         }
                     }
@@ -1438,4 +1438,15 @@ export function handleAbilityUse() {
 
 export function handleNewGame() {
     window.location.reload();
+}
+
+// Helper function to update player coordinates consistently
+function updatePlayerCoordinates(player, coords) {
+    if (!player || !coords) return;
+    
+    // Update both coordinate properties to ensure compatibility
+    player.coords = coords;
+    player.currentCoords = { ...coords };
+    
+    console.log(`Updated player ${player.name} coordinates to:`, coords);
 }

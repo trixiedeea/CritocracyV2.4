@@ -245,9 +245,18 @@ export const showVictoryCelebration = (winnerId, duration = 3000) => {
  * @param {Function} onComplete - Callback function when animation completes
  */
 export const animateTokenToPosition = (player, newPosition, onComplete) => {
+    // Check if we can use the board's animation function
+    if (window.board && typeof window.board.animateTokenToPosition === 'function') {
+        // If the board's function is available, use it
+        const startCoords = player.currentCoords || { x: 0, y: 0 };
+        window.board.animateTokenToPosition(player, startCoords, newPosition, 500, onComplete);
+        return;
+    }
+    
+    // Fallback to DOM-based animation if board function is not available
     const token = document.getElementById(`player-token-${player.id}`);
     if (!token) {
-        console.error(`Token not found for player ${player.id}`);
+        console.error(`Token not found for player ${player.id}. Make sure tokens are created in the DOM or use board.js animation instead.`);
         if (onComplete) onComplete();
         return;
     }
