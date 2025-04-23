@@ -24,7 +24,7 @@ import {
 } from './cards.js';
 import { START_SPACE } from './board-data.js';
 import {
-    logMessage, updatePlayerInfo, clearMessages, 
+    logMessage, updatePlayerInfo,
     updateGameControls, showCardPopup, promptForTradeResponse,
     hideDiceRollAnimation, updateGameComponents,
     highlightChoices, createPlayerTokenElements,
@@ -32,7 +32,7 @@ import {
     showDiceRollAnimation
 } from './ui.js';
 import {
-    initLogging, logGameEvent, logPlayerAction, 
+    logGameEvent, logPlayerAction, 
     logTurnStart, logCardDraw, logTurnEnd
 } from './logging.js';
 
@@ -178,7 +178,7 @@ export function getGameState() {
 
 
 
-export async function initializeGame(turnOrder) {
+export async function initializeGame(players) {
     console.log("Initializing game...");
     logMessage("Setting up new game...");
 
@@ -202,25 +202,34 @@ export async function initializeGame(turnOrder) {
         await setupBoard();
         await setupDecks();
 
-        // Create players based on turn order
-        if (Array.isArray(turnOrder) && turnOrder.length > 0) {
-            for (const playerConfig of turnOrder) {
-                const player = createPlayer(
-                    playerConfig.name,
-                    playerConfig.role,
-                    playerConfig.isHuman
-                );
-                if (player) {
-                    gameState.players.push(player);
+        // Add players to game state
+        if (Array.isArray(players) && players.length > 0) {
+            // Validate each player has required properties
+            const validPlayers = players.filter(player => {
+                if (!player || !player.id || !player.name || !player.role || typeof player.isHuman !== 'boolean') {
+                    console.error(`Invalid player configuration:`, player);
+                    return false;
                 }
+                return true;
+            });
+
+            if (validPlayers.length === 0) {
+                throw new Error("No valid players provided");
             }
+
+            gameState.players = validPlayers;
+            gameState.totalPlayerCount = validPlayers.length;
+            gameState.humanPlayerCount = validPlayers.filter(p => p.isHuman).length;
+            gameState.turnOrder = validPlayers.map(p => p.id);
+            console.log(`Added ${validPlayers.length} players to game state`);
+        } else {
+            throw new Error("No valid players provided");
         }
 
         // Set game state
         gameState.started = true;
         gameState.currentPhase = 'PLAYER_TURN';
         gameState.currentPlayerIndex = 0;
-        gameState.turnOrder = gameState.players.map(p => p.id);
 
         // Update UI
         updateGameComponents();
@@ -230,8 +239,7 @@ export async function initializeGame(turnOrder) {
         drawBoard();
 
         // Create and position player tokens
-        const players = getPlayers();
-        managePlayerTokens(players);
+        managePlayerTokens(gameState.players);
 
         console.log("Game initialized successfully");
         return true;
@@ -562,6 +570,7 @@ export function resolveBoardClick(coords) {
             Math.pow(choiceX - coords.x, 2) + 
             Math.pow(choiceY - coords.y, 2)
         );
+        
         
         if (distance < minDistance) {
             minDistance = distance;
@@ -1751,6 +1760,9 @@ export function setupRoleSelectionPhase() {
     // Update the game state
     gameState.currentPhase = 'ROLE_SELECTION';
     gameState.currentPlayerId = turnOrder[0];
+    gameState.players = players; // Add players to game state
+    gameState.totalPlayerCount = players.length;
+    gameState.humanPlayerCount = players.filter(p => p.isHuman).length;
     
     // Log the game event
     logGameEvent('TURN_ORDER_SET', {
@@ -1769,5 +1781,5 @@ export function setupRoleSelectionPhase() {
     updateGameControls();
     updatePlayerInfo();
     
-    return { success: true, turnOrder };
+    return { success: true, turnOrder, players }; // Return players array for initialization
 }

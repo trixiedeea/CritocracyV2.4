@@ -1,18 +1,20 @@
-// Board Module for Critocracy - Coordinate-Based System
+// Board Module for Critocracy
 // Handles drawing, animation, and coordinate lookups.
-
 // ===== Imports =====
-import { getPlayers, PLAYER_ROLES, getPlayerById } from './players.js'; 
 import { 
-    // Import the raw path data using Age names directly
-    AgeOfExpansion, 
-    AgeOfResistance, 
-    AgeOfReckoning, 
-    AgeOfLegacy, 
-    START_SPACE, FINISH_SPACE,
-    ORIGINAL_WIDTH, ORIGINAL_HEIGHT,
-    PATH_COLORS
-} from './board-data.js'; 
+    START_SPACE, 
+    FINISH_SPACE,
+    ORIGINAL_WIDTH, 
+    ORIGINAL_HEIGHT,
+    PATH_COLORS,
+    AgeOfExpansion,
+    AgeOfResistance,
+    AgeOfReckoning,
+    AgeOfLegacy
+} from './board-data.js';
+import { getPlayers, getPlayerById, PLAYER_ROLES } from './players.js';
+import { updatePlayerInfo } from './ui.js';
+import { logGameEvent, logPlayerAction } from './logging.js';
 
 // Define deckRegions as an empty array until properly populated
 const deckRegions = [];
@@ -35,7 +37,9 @@ let boardState = {
 
 // ===== Animation State =====
 const animationState = {
-    durationPerStep: 300 // ms per space move
+    durationPerStep: 300, // ms per space move
+    isAnimating: false,
+    currentAnimation: null
 };
 
 // ===== Internal Helper Functions (Defined Before Usage) =====
@@ -199,8 +203,8 @@ export function managePlayerTokens(players, playerId = null) {
             
             // Get token image
             const tokenImage = document.createElement('img');
-            const roleInitial = player.role.charAt(0).toUpperCase();
-            tokenImage.src = `${TOKEN_DIR}/${roleInitial}.png`;
+            const roleData = PLAYER_ROLES[player.role];
+            tokenImage.src = roleData.token;
             tokenImage.alt = `${player.name} (${player.role})`;
             tokenImage.style.width = '100%';
             tokenImage.style.height = '100%';
@@ -211,16 +215,24 @@ export function managePlayerTokens(players, playerId = null) {
             // Add error handling for token images
             tokenImage.onerror = () => {
                 console.warn(`Failed to load token image for ${player.name}, using fallback`);
-                // Use the preloaded fallback from boardState.playerTokenImages
-                if (boardState.playerTokenImages[player.role]) {
-                    if (boardState.playerTokenImages[player.role] instanceof HTMLCanvasElement) {
-                        tokenImage.src = boardState.playerTokenImages[player.role].toDataURL();
-                    } else {
-                        tokenImage.src = boardState.playerTokenImages[player.role].src;
-                    }
-                } else {
-                    tokenImage.src = `${TOKEN_DIR}/default.png`;
-                }
+                // Create a fallback canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = TOKEN_SIZE;
+                canvas.height = TOKEN_SIZE;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw a simple circle with the role letter
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(TOKEN_SIZE/2, TOKEN_SIZE/2, TOKEN_SIZE/2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(player.role.charAt(0), TOKEN_SIZE/2, TOKEN_SIZE/2);
+                
+                tokenImage.src = canvas.toDataURL();
             };
             
             // Create name label
@@ -282,9 +294,22 @@ export function managePlayerTokens(players, playerId = null) {
             document.head.appendChild(style);
         }
         
+        // Log the token management event
+        logGameEvent('TOKENS_UPDATED', {
+            playerCount: playersToUpdate.length,
+            playerIds: playersToUpdate.map(p => p.id)
+        });
+        
+        // Update player info in UI
+        updatePlayerInfo();
+        
         console.log("Player tokens managed successfully");
     } catch (error) {
         console.error("Error managing player tokens:", error);
+        logGameEvent('TOKEN_ERROR', {
+            error: error.message,
+            playerCount: players?.length || 0
+        });
     }
 }
 
@@ -1149,69 +1174,70 @@ export const setupBoard = async () => {
 // ===== Animation Functions =====
 
 /**
- * Animates a player token smoothly between two points using DOM elements
+ * Animates a player token to a new position
+ * @param {Object} player - The player whose token to animate
+ * @param {Object} targetCoords - The target coordinates
+ * @param {Function} [callback] - Optional callback to run after animation
  */
-export function animateTokenToPosition(player, startCoords, targetCoords, duration = 300, callback) {
-    if (!player || !startCoords || !targetCoords) {
-        console.error("animateTokenToPosition: Invalid args or state.");
-        if (callback) callback();
-        return;
-    }
+export function animateTokenToPosition(player, targetCoords, callback) {
+    if (!player || !targetCoords) return;
     
-    // Find the token DOM element for this player
     const tokenElement = document.getElementById(`player-token-${player.id}`);
-    if (!tokenElement) {
-        console.error(`Token element not found for player ${player.id}`);
-        // Create it if it doesn't exist
-        drawPlayerToken(player);
-        if (callback) callback();
-        return;
-    }
+    if (!tokenElement) return;
     
-    // Convert coordinates to screen position
-    const [startX, startY] = scaleCoordinates(startCoords.x, startCoords.y);
-    const [targetX, targetY] = scaleCoordinates(targetCoords.x, targetCoords.y);
-    const radius = (TOKEN_SIZE * boardState.scale) / 2;
+    // Set animation state
+    animationState.isAnimating = true;
+    animationState.currentAnimation = player.id;
     
-    // Set the starting position
-    tokenElement.style.left = `${startX - radius}px`;
-    tokenElement.style.top = `${startY - radius}px`;
+    // Get current position
+    const currentLeft = parseFloat(tokenElement.style.left);
+    const currentTop = parseFloat(tokenElement.style.top);
     
-    // Set up animation
-    const startTime = performance.now();
+    // Get target position
+    const targetLeft = targetCoords.x;
+    const targetTop = targetCoords.y;
     
-    function step(currentTime) {
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        
-        // Use easing for smoother animation
-        const easedProgress = progress < 0.5 ? 
-            2 * progress * progress : 
-            1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
-        // Calculate current position
-        const currentX = startX + (targetX - startX) * easedProgress;
-        const currentY = startY + (targetY - startY) * easedProgress;
-        
-        // Update element position
-        tokenElement.style.left = `${currentX - radius}px`;
-        tokenElement.style.top = `${currentY - radius}px`;
-        
-        // Continue animation if not complete
-        if (progress < 1) {
-            requestAnimationFrame(step);
-        } else {
-            // Ensure we're at the final position
-            tokenElement.style.left = `${targetX - radius}px`;
-            tokenElement.style.top = `${targetY - radius}px`;
+    // Calculate distance
+    const distance = Math.sqrt(
+        Math.pow(targetLeft - currentLeft, 2) + 
+        Math.pow(targetTop - currentTop, 2)
+    );
+    
+    // Set animation duration based on distance
+    const duration = Math.min(1000, Math.max(300, distance * 2));
+    
+    // Log the animation start
+    logPlayerAction(player.id, 'TOKEN_MOVEMENT_START', {
+        from: { x: currentLeft, y: currentTop },
+        to: { x: targetLeft, y: targetTop },
+        duration
+    });
+    
+    // Add animation class
+    tokenElement.style.transition = `all ${duration}ms ease-out`;
+    
+    // Set new position
+    tokenElement.style.left = `${targetLeft}px`;
+    tokenElement.style.top = `${targetTop}px`;
+    
+    // Add bounce effect at the end
+    setTimeout(() => {
+        tokenElement.classList.add('animate-bounce');
+        setTimeout(() => {
+            tokenElement.classList.remove('animate-bounce');
             
-            // Call the completion callback
+            // Reset animation state
+            animationState.isAnimating = false;
+            animationState.currentAnimation = null;
+            
+            // Log the animation completion
+            logPlayerAction(player.id, 'TOKEN_MOVEMENT_COMPLETE', {
+                finalPosition: { x: targetLeft, y: targetTop }
+            });
+            
             if (callback) callback();
-        }
-    }
-    
-    // Start animation
-    requestAnimationFrame(step);
+        }, 500);
+    }, duration);
 }
 
 /**
@@ -1322,7 +1348,7 @@ export function startMoveAnimation(player, steps, onComplete) {
         }
         
         console.log(`ANIMATE: Step ${currentStep+1}: ${startLogicalPos.x},${startLogicalPos.y} -> ${targetLogicalPos.x},${targetLogicalPos.y} (Stop: ${!!reasonForStopping})`);
-        animateTokenToPosition(player, startLogicalPos, targetLogicalPos, animationState.durationPerStep, () => {
+        animateTokenToPosition(player, targetLogicalPos, () => {
             logicalCoords = { ...targetLogicalPos };
             currentStep++; 
             if (reasonForStopping) {

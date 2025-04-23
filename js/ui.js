@@ -201,7 +201,11 @@ function setupEventListeners() {
                 return;
             }
             
-            const selectedRole = roleButton.getAttribute('data-role');
+            const selectedRole = roleButton.getAttribute('data-role').toUpperCase();
+            if (!PLAYER_ROLES[selectedRole]) {
+                alert("Invalid role selected. Please try again.");
+                return;
+            }
             
             // Create player configurations
             const playerConfigs = [];
@@ -209,13 +213,13 @@ function setupEventListeners() {
             // Add human player with selected role
             playerConfigs.push({
                 name: "Player 1", 
-                role: selectedRole.toUpperCase(),
+                role: selectedRole,
                 isHuman: true
             });
             
             // Add AI players with random roles
             const availableRoles = Object.keys(PLAYER_ROLES)
-                .filter(role => role.toUpperCase() !== selectedRole.toUpperCase());
+                .filter(role => role !== selectedRole);
             
             // Add 5 AI players (to make a total of 6 players)
             for (let i = 0; i < 5; i++) {
@@ -224,7 +228,7 @@ function setupEventListeners() {
                 
                 playerConfigs.push({
                     name: `AI ${i + 1}`,
-                    role: aiRole.toUpperCase(),
+                    role: aiRole,
                     isHuman: false
                 });
             }
@@ -401,10 +405,24 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
         roleCards.forEach(card => {
             card.addEventListener('click', () => {
                 // Deselect all cards
-                roleCards.forEach(c => c.classList.remove('selected'));
+                roleCards.forEach(c => {
+                    c.classList.remove('selected');
+                    const btn = c.querySelector('.role-select');
+                    if (btn) btn.classList.remove('selected');
+                });
                 
-                // Select the clicked card
+                // Select the clicked card and its button
                 card.classList.add('selected');
+                const roleButton = card.querySelector('.role-select');
+                if (roleButton) {
+                    roleButton.classList.add('selected');
+                    const role = roleButton.getAttribute('data-role');
+                    if (role && PLAYER_ROLES[role]) {
+                        console.log(`Selected role: ${role}`);
+                    } else {
+                        console.error(`Invalid role: ${role}`);
+                    }
+                }
             });
         });
         
@@ -418,41 +436,33 @@ export function setupRoleSelectionUI(totalPlayers, humanPlayers) {
             newBtn.addEventListener('click', () => {
                 console.log("Role confirm button clicked");
                 
-                // Get selected role
-                const selectedCard = document.querySelector('.role-card.selected, .grid-item.selected');
-                if (!selectedCard) {
+                // Get selected role button
+                const selectedButton = document.querySelector('.role-select.selected');
+                if (!selectedButton) {
                     alert("Please select a role first!");
                     return;
                 }
                 
-                const roleButton = selectedCard.querySelector('.role-select');
-                if (!roleButton) {
-                    alert("Error getting selected role. Please try again.");
+                const selectedRole = selectedButton.getAttribute('data-role');
+                if (!selectedRole || !PLAYER_ROLES[selectedRole]) {
+                    alert("Invalid role selected. Please try again.");
                     return;
                 }
                 
-                const selectedRole = roleButton.getAttribute('data-role');
+                console.log(`Selected role: ${selectedRole}`);
                 
                 // Create player configurations
-                const playerConfigs = [];
-                
-                // Add human player with selected role - Convert to uppercase to match the system expectation
-                playerConfigs.push({
+                const playerConfigs = [{
                     name: "Player 1", 
-                    role: selectedRole.toUpperCase(),
+                    role: selectedRole,  // Already in uppercase from the HTML
                     isHuman: true
-                });
+                }];
                 
                 // For single player mode, we only need 1 player (the human player)
-                // Don't add any AI players if we're in single player mode
-                console.log(`Single player mode selected - initializing game directly`);
+                console.log(`Single player mode selected - initializing game with role: ${selectedRole}`);
                 
-                // Start game immediately with the single player configuration
-                startGameWithSelectedRoles([{
-                    name: "Player 1", 
-                    role: selectedRole.toUpperCase(),
-                    isHuman: true
-                }]);
+                // Start game with the player configuration
+                startGameWithSelectedRoles(playerConfigs);
             });
         }
         
@@ -642,10 +652,10 @@ function startGameWithSelectedRoles(playerConfigs) {
         const allRoles = Object.keys(PLAYER_ROLES);
         
         // Get roles that are already used
-        const usedRoles = playerConfigs.map(p => p.role);
+        const usedRoles = playerConfigs.map(p => p.role.toUpperCase());
         
         // Get remaining available roles
-        let remainingRoles = allRoles.filter(role => !usedRoles.includes(role));
+        let remainingRoles = allRoles.filter(role => !usedRoles.includes(role.toUpperCase()));
         
         // If we need more roles than remaining, allow duplicates
         while (remainingRoles.length < (6 - playerConfigs.length) && allRoles.length > 0) {
@@ -657,7 +667,7 @@ function startGameWithSelectedRoles(playerConfigs) {
             const aiRole = remainingRoles[i];
             playerConfigs.push({
                 name: `AI ${i + 1}`,
-                role: aiRole,
+                role: aiRole.toUpperCase(),
                 isHuman: false
             });
         }
@@ -672,18 +682,37 @@ function startGameWithSelectedRoles(playerConfigs) {
         playersModule.resetPlayers();
         
         // Create players first
-        const playerIds = playerConfigs.map(config => {
-            const player = playersModule.createPlayer(config.name, config.role, config.isHuman);
-            return player.id;
-        });
+        const createdPlayers = [];
+        for (const config of playerConfigs) {
+            // Ensure role is uppercase and exists in PLAYER_ROLES
+            const role = config.role.toUpperCase();
+            if (!PLAYER_ROLES[role]) {
+                console.error(`Invalid role: ${role}`);
+                continue;
+            }
+            
+            const player = playersModule.createPlayer(config.name, role, config.isHuman);
+            if (player) {
+                createdPlayers.push(player);
+                console.log(`Created player: ${player.name} (${player.role})`);
+            }
+        }
+        
+        if (createdPlayers.length === 0) {
+            alert("No valid players could be created. Please try again.");
+            return;
+        }
         
         // Now import the game module and initialize the game
         import('./game.js').then(gameModule => {
-            // Initialize the game with the player IDs
-            gameModule.initializeGame(playerIds).then(success => {
+            // Initialize the game with the created players
+            gameModule.initializeGame(createdPlayers).then(success => {
                 if (success) {
                     // Show game board screen if initialization successful
                     showScreen('game-board-screen');
+                    // Update UI for the first player
+                    updatePlayerInfo();
+                    updateGameControls();
                 } else {
                     alert("Failed to start the game. Please try again.");
                 }
@@ -2645,14 +2674,41 @@ function addCardStyles() {
         const baseWidth = 1024;
         const baseHeight = 1536;
         const gameWrapper = document.getElementById('game-wrapper');
-        const scaleX = window.innerWidth / baseWidth;
-        const scaleY = window.innerHeight / baseHeight;
+        
+        // Check if game wrapper exists
+        if (!gameWrapper) {
+            console.warn('Game wrapper element not found, skipping scale');
+            return;
+        }
+        
+        // Get container dimensions
+        const container = gameWrapper.parentElement;
+        if (!container) {
+            console.warn('Game wrapper parent not found, skipping scale');
+            return;
+        }
+        
+        // Calculate scale based on container size
+        const scaleX = container.clientWidth / baseWidth;
+        const scaleY = container.clientHeight / baseHeight;
         const scale = Math.min(scaleX, scaleY);
+        
+        // Apply scale
         gameWrapper.style.transform = `scale(${scale})`;
+        gameWrapper.style.transformOrigin = 'top left';
+        
+        // Log the scaling
+        console.log(`Game scaled to ${scale * 100}%`);
     }
     
-    window.addEventListener('resize', scaleGameToFit);
-    window.addEventListener('load', scaleGameToFit);
+    // Only add event listeners if the game wrapper exists
+    const gameWrapper = document.getElementById('game-wrapper');
+    if (gameWrapper) {
+        window.addEventListener('resize', scaleGameToFit);
+        window.addEventListener('load', scaleGameToFit);
+    } else {
+        console.warn('Game wrapper not found, scaling events not attached');
+    }
 }
 
 // Add the styles when the file loads
